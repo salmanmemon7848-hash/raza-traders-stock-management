@@ -20,7 +20,8 @@
     "jspdf-autotable": "^3.8.2",
     "xlsx": "^0.18.5",
     "lucide-react": "^0.303.0",
-    "firebase": "^10.13.0"
+    "firebase": "^10.13.0",
+    "@supabase/supabase-js": "^2.39.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
