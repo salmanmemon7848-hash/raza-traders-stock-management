@@ -19,6 +19,15 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     try {
       const storedData = localStorage.getItem('razaTradersData');
+      const dataClearedFlag = localStorage.getItem('dataCleared');
+      
+      if (dataClearedFlag === 'true') {
+        // Data was intentionally cleared, don't load initial data
+        console.log('Data cleared by user - starting with empty state');
+        localStorage.removeItem('dataCleared'); // Remove the flag
+        return; // Don't load anything
+      }
+      
       if (storedData) {
         const parsedData = JSON.parse(storedData);
         dispatch({ type: 'LOAD_DATA', payload: parsedData });

@@ -69,17 +69,28 @@ export const useBackup = () => {
   };
 
   const clearAllData = () => {
-    if (window.confirm('Are you sure you want to delete all data? This cannot be undone.')) {
-      try {
-        localStorage.removeItem('razaTradersData');
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-        success('All data cleared successfully');
-        return { success: true };
-      } catch (err) {
-        error('Failed to clear data');
-        return { success: false, error: err.message };
+    if (window.confirm('⚠️ Are you sure you want to delete ALL data? This CANNOT be undone!\n\nThis will delete:\n- All products\n- All customers\n- All invoices\n- All settings')) {
+      if (window.confirm('⚠️ FINAL WARNING: This action is PERMANENT! Click OK to confirm deletion.')) {
+        try {
+          // Clear localStorage
+          localStorage.removeItem('razaTradersData');
+          
+          // Set a flag to prevent loading initial data
+          localStorage.setItem('dataCleared', 'true');
+          
+          success('All data cleared successfully!');
+          
+          // Reload page after delay
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+          
+          return { success: true };
+        } catch (err) {
+          console.error('Error clearing data:', err);
+          error('Failed to clear data');
+          return { success: false, error: err.message };
+        }
       }
     }
     return { success: false, error: 'Operation cancelled' };
