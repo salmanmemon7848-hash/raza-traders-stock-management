@@ -1,5 +1,10 @@
 // Firebase Configuration
-// You'll need to create a Firebase project and add your config here
+// IMPORTANT: Replace these placeholder values with your actual Firebase config!
+// Follow these steps to get your config:
+// 1. Go to https://console.firebase.google.com/
+// 2. Create a new project (or select existing)
+// 3. Click the Web icon (</>) to add a web app
+// 4. Copy the firebaseConfig object and paste it below
 
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY_HERE",
@@ -11,3 +16,10 @@ const firebaseConfig = {
 };
 
 export default firebaseConfig;
+
+// QUICK SETUP GUIDE:
+// After pasting your config above:
+// 1. Run: npm install
+// 2. Enable Firestore Database in Firebase Console
+// 3. Deploy: git push origin main
+// 4. Your data will sync across all devices automatically!
