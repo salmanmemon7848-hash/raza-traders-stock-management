@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { appReducer, initialState } from './appReducer';
 import { initialProducts, initialCustomers, initialInvoices, initialSettings } from '../data/initialData';
+import { saveDataToCloud, getDataFromCloud, subscribeToDataChanges } from '../services/firebaseService';
 
 const AppContext = createContext(null);
 
@@ -15,57 +16,87 @@ export const useAppContext = () => {
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // Load data from localStorage on mount
+  // Load data from localStorage on mount (with cloud sync fallback)
   useEffect(() => {
-    try {
-      const storedData = localStorage.getItem('razaTradersData');
-      const dataClearedFlag = localStorage.getItem('dataCleared');
-      
-      if (dataClearedFlag === 'true') {
-        // Data was intentionally cleared, don't load initial data
-        console.log('Data cleared by user - starting with empty state');
-        localStorage.removeItem('dataCleared'); // Remove the flag
-        return; // Don't load anything
+    const loadData = async () => {
+      try {
+        // First, try to load from cloud
+        const cloudData = await getDataFromCloud();
+        
+        if (cloudData) {
+          console.log('Loading data from cloud...');
+          dispatch({ type: 'LOAD_DATA', payload: cloudData });
+          return;
+        }
+        
+        // Fallback to localStorage if no cloud data
+        const storedData = localStorage.getItem('razaTradersData');
+        const dataClearedFlag = localStorage.getItem('dataCleared');
+        
+        if (dataClearedFlag === 'true') {
+          localStorage.removeItem('dataCleared');
+          return;
+        }
+        
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          dispatch({ type: 'LOAD_DATA', payload: parsedData });
+        } else {
+          dispatch({
+            type: 'LOAD_DATA',
+            payload: {
+              products: initialProducts,
+              customers: initialCustomers,
+              invoices: initialInvoices,
+              expenses: [],
+              settings: initialSettings
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to load data' });
       }
-      
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        dispatch({ type: 'LOAD_DATA', payload: parsedData });
-      } else {
-        // Load initial sample data if no stored data
-        dispatch({
-          type: 'LOAD_DATA',
-          payload: {
-            products: initialProducts,
-            customers: initialCustomers,
-            invoices: initialInvoices,
-            expenses: [], // Start with no expenses
-            settings: initialSettings
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error loading data:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to load data' });
-    }
+    };
+    
+    loadData();
   }, []);
 
-  // Save data to localStorage whenever state changes
+  // Save data to localStorage AND cloud whenever state changes
   useEffect(() => {
-    try {
-      const dataToSave = {
-        products: state.products,
-        customers: state.customers,
-        invoices: state.invoices,
-        expenses: state.expenses,
-        settings: state.settings
-      };
-      localStorage.setItem('razaTradersData', JSON.stringify(dataToSave));
-    } catch (error) {
-      console.error('Error saving data:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to save data' });
-    }
+    const saveData = async () => {
+      try {
+        const dataToSave = {
+          products: state.products,
+          customers: state.customers,
+          invoices: state.invoices,
+          expenses: state.expenses,
+          settings: state.settings
+        };
+        
+        // Save to localStorage (for offline support)
+        localStorage.setItem('razaTradersData', JSON.stringify(dataToSave));
+        
+        // Save to cloud (for cross-device sync)
+        await saveDataToCloud(dataToSave);
+      } catch (error) {
+        console.error('Error saving data:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to save data' });
+      }
+    };
+    
+    saveData();
   }, [state.products, state.customers, state.invoices, state.expenses, state.settings]);
+  
+  // Subscribe to real-time updates from cloud
+  useEffect(() => {
+    const unsubscribe = subscribeToDataChanges((cloudData) => {
+      console.log('Real-time update received from cloud');
+      dispatch({ type: 'LOAD_DATA', payload: cloudData });
+    });
+    
+    return () => unsubscribe();
+  }, []);
 
   // Auto-remove notifications after 5 seconds
   useEffect(() => {
