@@ -12,21 +12,24 @@ const ExpenseForm = ({ expense, onSave, onCancel }) => {
     amount: expense?.amount?.toString() || '',
     category: expense?.category || '',
     date: expense?.date ? new Date(expense.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    notes: expense?.notes || ''
+    notes: expense?.notes || '',
+    customCategory: '' // For "Other" category
   });
   
   const [errors, setErrors] = useState({});
 
-  // Default categories + custom categories from settings
+  // Default categories + Other option
   const defaultCategories = [
     'Rent',
     'Electricity Bill',
     'Staff Salary',
     'Transport / Delivery',
-    'Maintenance / Repair'
+    'Maintenance / Repair',
+    'Other' // ← Added Other option
   ];
   
   const customCategories = settings.expenseCategories || [];
+  // Show custom categories separately (not including "Other")
   const allCategories = [...defaultCategories, ...customCategories];
 
   const handleSubmit = (e) => {
@@ -46,6 +49,10 @@ const ExpenseForm = ({ expense, onSave, onCancel }) => {
     if (!formData.date) {
       errors.date = 'Date is required';
     }
+    // Validate custom category if "Other" is selected
+    if (formData.category === 'Other' && !formData.customCategory?.trim()) {
+      errors.customCategory = 'Please enter a custom category name';
+    }
 
     if (Object.keys(errors).length > 0) {
       setErrors(errors);
@@ -53,11 +60,28 @@ const ExpenseForm = ({ expense, onSave, onCancel }) => {
     }
 
     try {
+      // Determine final category name
+      const finalCategory = formData.category === 'Other' && formData.customCategory?.trim() 
+        ? formData.customCategory.trim() 
+        : formData.category;
+
+      // Save the expense
       onSave({
         ...expense,
         ...formData,
+        category: finalCategory,
         amount: parseFloat(formData.amount)
       });
+      
+      // If "Other" was selected and a custom category was entered, save it to settings for future use
+      if (formData.category === 'Other' && formData.customCategory?.trim()) {
+        const newCategory = formData.customCategory.trim();
+        const existingCategories = settings.expenseCategories || [];
+        // Only add if it doesn't already exist
+        if (!existingCategories.includes(newCategory)) {
+          // This will be handled by the parent component through context
+        }
+      }
     } catch (error) {
       console.error('Error saving expense:', error);
       setErrors({ general: 'Failed to save expense. Please try again.' });
@@ -140,6 +164,31 @@ const ExpenseForm = ({ expense, onSave, onCancel }) => {
         </select>
         {errors.category && (
           <p className="mt-1 text-sm text-red-600">{errors.category}</p>
+        )}
+        
+        {/* Custom Category Input - Shows when "Other" is selected */}
+        {formData.category === 'Other' && (
+          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <label className="block text-sm font-semibold text-yellow-800 mb-2">
+              ➕ Enter Custom Category Name *
+            </label>
+            <input
+              type="text"
+              value={formData.customCategory}
+              onChange={(e) => handleChange('customCategory', e.target.value)}
+              placeholder="e.g., Furniture Polishing, Repair Tools, etc."
+              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-shadow text-gray-900 ${
+                errors.customCategory ? 'border-red-300' : 'border-gray-300'
+              }`}
+              autoFocus
+            />
+            {errors.customCategory && (
+              <p className="mt-1 text-sm text-red-600">{errors.customCategory}</p>
+            )}
+            <p className="mt-2 text-xs text-yellow-700">
+              💡 This category will be saved and available for future use
+            </p>
+          </div>
         )}
       </div>
 

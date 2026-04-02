@@ -21,8 +21,17 @@ Pre-configured categories for furniture & electronics shop:
 - 👨‍🔧 Staff Salary
 - 🚚 Transport / Delivery
 - 🧾 Maintenance / Repair
+- ➕ **Other** (Enter custom category!)
 
 **PLUS:** Ability to add custom categories!
+
+### **✨ NEW: "Other" Category Feature**
+When you select "Other":
+- A text input appears asking for custom category name
+- Type any category (e.g., "Furniture Polishing", "Repair Tools")
+- This category is saved and available for future use
+- Automatically added to your personal category list
+- No need to type it again next time!
 
 ### **3. Net Profit Calculation** 💵
 **NEW FORMULA:**

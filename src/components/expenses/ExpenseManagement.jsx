@@ -8,7 +8,7 @@ import { Plus, Download, FileSpreadsheet } from 'lucide-react';
 import { exportExpensesCSV, exportExpensesPDF } from '../../utils/pdfGenerator';
 
 const ExpenseManagement = () => {
-  const { expenses, dispatch, success, error } = useAppContext();
+  const { expenses, dispatch, success, error, settings } = useAppContext();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
 
@@ -22,6 +22,18 @@ const ExpenseManagement = () => {
         // Add new expense
         dispatch({ type: 'ADD_EXPENSE', payload: expenseData });
         success('Expense added successfully');
+        
+        // If this is a new custom category (not in default list), save it to settings
+        const defaultCategories = ['Rent', 'Electricity Bill', 'Staff Salary', 'Transport / Delivery', 'Maintenance / Repair'];
+        if (!defaultCategories.includes(expenseData.category)) {
+          const existingCustomCategories = settings.expenseCategories || [];
+          if (!existingCustomCategories.includes(expenseData.category)) {
+            dispatch({ 
+              type: 'ADD_EXPENSE_CATEGORY', 
+              payload: expenseData.category 
+            });
+          }
+        }
       }
       setIsFormOpen(false);
       setEditingExpense(null);
