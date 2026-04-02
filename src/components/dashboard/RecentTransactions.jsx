@@ -1,0 +1,42 @@
+import React from 'react';
+import { useAppContext } from '../../contexts/AppContext';
+
+const RecentTransactions = () => {
+  const { invoices } = useAppContext();
+  const recentInvoices = [...invoices]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5);
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+      <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Transactions</h3>
+      
+      {recentInvoices.length === 0 ? (
+        <p className="text-gray-500 text-center py-8">No transactions yet</p>
+      ) : (
+        <div className="space-y-3">
+          {recentInvoices.map((invoice) => (
+            <div 
+              key={invoice.id}
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+            >
+              <div>
+                <p className="font-semibold text-gray-900">{invoice.invoiceNumber}</p>
+                <p className="text-sm text-gray-600">{invoice.customer?.name || 'Customer'}</p>
+                <p className="text-xs text-gray-500">
+                  {new Date(invoice.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-green-600">Rs. {invoice.grandTotal.toLocaleString()}</p>
+                <p className="text-xs text-gray-500">{invoice.items.length} items</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default RecentTransactions;

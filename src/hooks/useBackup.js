@@ -1,0 +1,93 @@
+import { useAppContext } from '../contexts/AppContext';
+
+export const useBackup = () => {
+  const { dispatch, success, error } = useAppContext();
+
+  const exportBackup = () => {
+    try {
+      const data = localStorage.getItem('razaTradersData');
+      if (!data) {
+        return { success: false, error: 'No data to backup' };
+      }
+
+      const backup = {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        data: JSON.parse(data)
+      };
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+
+      success('Backup exported successfully');
+      return { success: true };
+    } catch (err) {
+      console.error('Error exporting backup:', err);
+      error('Failed to export backup');
+      return { success: false, error: err.message };
+    }
+  };
+
+  const importBackup = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const backup = JSON.parse(event.target.result);
+          
+          if (!backup.data || !backup.data.products || !backup.data.customers) {
+            throw new Error('Invalid backup file format');
+          }
+
+          // Validate and restore data
+          localStorage.setItem('razaTradersData', JSON.stringify(backup.data));
+          
+          // Reload the page to apply changes
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+
+          success('Backup restored successfully!');
+          resolve({ success: true });
+        } catch (err) {
+          console.error('Error importing backup:', err);
+          error('Invalid backup file');
+          resolve({ success: false, error: err.message });
+        }
+      };
+      
+      reader.onerror = () => {
+        error('Failed to read backup file');
+        resolve({ success: false, error: 'Failed to read file' });
+      };
+
+      reader.readAsText(file);
+    });
+  };
+
+  const clearAllData = () => {
+    if (window.confirm('Are you sure you want to delete all data? This cannot be undone.')) {
+      try {
+        localStorage.removeItem('razaTradersData');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+        success('All data cleared successfully');
+        return { success: true };
+      } catch (err) {
+        error('Failed to clear data');
+        return { success: false, error: err.message };
+      }
+    }
+    return { success: false, error: 'Operation cancelled' };
+  };
+
+  return {
+    exportBackup,
+    importBackup,
+    clearAllData
+  };
+};
