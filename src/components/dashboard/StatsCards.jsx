@@ -1,44 +1,46 @@
 import React from 'react';
-import { DollarSign, TrendingUp, Package, Users } from 'lucide-react';
+import { DollarSign, TrendingUp, Package, Users, Receipt } from 'lucide-react';
 import { useAppContext } from '../../contexts/AppContext';
 import { calculateProfit } from '../../utils/calculations';
 
 const StatsCards = () => {
-  const { products, customers, invoices } = useAppContext();
+  const { products, customers, invoices, expenses } = useAppContext();
   
   const totalSales = invoices.reduce((sum, invoice) => sum + invoice.grandTotal, 0);
-  const totalProfit = calculateProfit(products, invoices);
+  const grossProfit = calculateProfit(products, invoices);
+  const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const netProfit = grossProfit - totalExpenses;
   const totalProducts = products.length;
   const totalCustomers = customers.length;
 
   const cards = [
     {
       title: 'Total Sales',
-      value: `Rs. ${totalSales.toLocaleString()}`,
+      value: `₹${totalSales.toLocaleString()}`,
       icon: DollarSign,
       color: 'bg-green-500',
       textColor: 'text-green-600'
     },
     {
-      title: 'Total Profit',
-      value: `Rs. ${totalProfit.toLocaleString()}`,
+      title: 'Total Expenses',
+      value: `₹${totalExpenses.toLocaleString()}`,
+      icon: Receipt,
+      color: 'bg-red-500',
+      textColor: 'text-red-600'
+    },
+    {
+      title: 'Net Profit',
+      value: `₹${netProfit.toLocaleString()}`,
       icon: TrendingUp,
-      color: 'bg-blue-500',
-      textColor: 'text-blue-600'
+      color: netProfit >= 0 ? 'bg-blue-500' : 'bg-orange-500',
+      textColor: netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'
     },
     {
-      title: 'Total Products',
-      value: totalProducts.toString(),
-      icon: Package,
-      color: 'bg-purple-500',
-      textColor: 'text-purple-600'
-    },
-    {
-      title: 'Total Customers',
+      title: 'Customers',
       value: totalCustomers.toString(),
       icon: Users,
-      color: 'bg-orange-500',
-      textColor: 'text-orange-600'
+      color: 'bg-purple-500',
+      textColor: 'text-purple-600'
     }
   ];
 

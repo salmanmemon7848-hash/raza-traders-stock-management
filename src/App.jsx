@@ -5,6 +5,7 @@ import Dashboard from './components/dashboard/Dashboard';
 import StockManagement from './components/stock/StockManagement';
 import BillingSystem from './components/billing/BillingSystem';
 import CustomerManagement from './components/customers/CustomerManagement';
+import ExpenseManagement from './components/expenses/ExpenseManagement';
 import Settings from './components/settings/Settings';
 import Reports from './components/reports/Reports';
 import Notifications from './components/common/Notifications';
@@ -24,6 +25,8 @@ const AppContent = () => {
         return <BillingSystem />;
       case 'customers':
         return <CustomerManagement />;
+      case 'expenses':
+        return <ExpenseManagement />;
       case 'reports':
         return <Reports />;
       case 'settings':
@@ -39,6 +42,7 @@ const AppContent = () => {
       stock: 'Stock Management',
       billing: 'Billing System',
       customers: 'Customers',
+      expenses: 'Expenses',
       reports: 'Reports',
       settings: 'Settings'
     };

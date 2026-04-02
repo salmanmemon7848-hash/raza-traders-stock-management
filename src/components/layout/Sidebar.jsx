@@ -6,6 +6,7 @@ import {
   Users, 
   Settings,
   BarChart3,
+  Receipt,
   ChevronLeft 
 } from 'lucide-react';
 
@@ -15,6 +16,7 @@ const Sidebar = ({ currentPage, onNavigate, isOpen, onClose }) => {
     { id: 'stock', label: 'Stock Management', icon: Package },
     { id: 'billing', label: 'Billing System', icon: FileText },
     { id: 'customers', label: 'Customers', icon: Users },
+    { id: 'expenses', label: 'Expenses', icon: Receipt },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

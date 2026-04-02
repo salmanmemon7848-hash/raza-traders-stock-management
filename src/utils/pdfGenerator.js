@@ -200,3 +200,76 @@ export const printInvoice = (invoice, companySettings) => {
   printWindow.document.write(htmlContent);
   printWindow.document.close();
 };
+
+export const exportExpensesCSV = (expenses) => {
+  try {
+    const headers = ['Date', 'Title', 'Category', 'Amount', 'Notes'];
+    const rows = expenses.map(expense => [
+      new Date(expense.date).toLocaleDateString(),
+      expense.title,
+      expense.category,
+      expense.amount.toString(),
+      expense.notes || ''
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `expenses-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  } catch (error) {
+    console.error('Error exporting expenses CSV:', error);
+    throw error;
+  }
+};
+
+export const exportExpensesPDF = (expenses) => {
+  try {
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(18);
+    doc.setTextColor(14, 116, 144);
+    doc.text('Expense Report', 14, 20);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 27);
+    
+    // Summary
+    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Total Expenses: Rs. ${totalExpenses.toLocaleString()}`, 14, 35);
+    doc.text(`Total Entries: ${expenses.length}`, 140, 35);
+    
+    // Table
+    const tableData = expenses.map(expense => [
+      new Date(expense.date).toLocaleDateString(),
+      expense.title,
+      expense.category,
+      `Rs. ${expense.amount.toLocaleString()}`,
+      expense.notes || '-'
+    ]);
+    
+    autoTable(doc, {
+      startY: 45,
+      head: [['Date', 'Title', 'Category', 'Amount', 'Notes']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [14, 116, 144] },
+      footStyles: { fillColor: [14, 116, 144] },
+      footer: [['', '', 'Total', `Rs. ${totalExpenses.toLocaleString()}`, '']],
+    });
+    
+    doc.save(`expenses-report-${new Date().toISOString().split('T')[0]}.pdf`);
+  } catch (error) {
+    console.error('Error exporting expenses PDF:', error);
+    throw error;
+  }
+};

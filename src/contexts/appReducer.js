@@ -4,6 +4,7 @@ export const initialState = {
   products: [],
   customers: [],
   invoices: [],
+  expenses: [],
   settings: {
     lowStockThreshold: 5,
     companyName: 'Raza Traders',
@@ -27,6 +28,7 @@ export const appReducer = (state, action) => {
         products: action.payload.products || [],
         customers: action.payload.customers || [],
         invoices: action.payload.invoices || [],
+        expenses: action.payload.expenses || [],
         settings: action.payload.settings || state.settings
       };
 
@@ -196,6 +198,61 @@ export const appReducer = (state, action) => {
       return {
         ...initialState,
         settings: state.settings
+      };
+    }
+
+    case 'ADD_EXPENSE': {
+      const newExpense = {
+        ...action.payload,
+        id: generateId(),
+        createdAt: new Date().toISOString()
+      };
+      return {
+        ...state,
+        expenses: [...state.expenses, newExpense]
+      };
+    }
+
+    case 'UPDATE_EXPENSE': {
+      return {
+        ...state,
+        expenses: state.expenses.map(expense =>
+          expense.id === action.payload.id
+            ? { ...expense, ...action.payload, updatedAt: new Date().toISOString() }
+            : expense
+        )
+      };
+    }
+
+    case 'DELETE_EXPENSE': {
+      return {
+        ...state,
+        expenses: state.expenses.filter(expense => expense.id !== action.payload)
+      };
+    }
+
+    case 'ADD_EXPENSE_CATEGORY': {
+      const categories = state.settings.expenseCategories || [];
+      if (!categories.includes(action.payload)) {
+        return {
+          ...state,
+          settings: {
+            ...state.settings,
+            expenseCategories: [...categories, action.payload]
+          }
+        };
+      }
+      return state;
+    }
+
+    case 'DELETE_EXPENSE_CATEGORY': {
+      const categories = state.settings.expenseCategories || [];
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          expenseCategories: categories.filter(cat => cat !== action.payload)
+        }
       };
     }
 

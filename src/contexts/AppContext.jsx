@@ -39,6 +39,7 @@ export const AppProvider = ({ children }) => {
             products: initialProducts,
             customers: initialCustomers,
             invoices: initialInvoices,
+            expenses: [], // Start with no expenses
             settings: initialSettings
           }
         });
@@ -56,6 +57,7 @@ export const AppProvider = ({ children }) => {
         products: state.products,
         customers: state.customers,
         invoices: state.invoices,
+        expenses: state.expenses,
         settings: state.settings
       };
       localStorage.setItem('razaTradersData', JSON.stringify(dataToSave));
@@ -63,7 +65,7 @@ export const AppProvider = ({ children }) => {
       console.error('Error saving data:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to save data' });
     }
-  }, [state.products, state.customers, state.invoices, state.settings]);
+  }, [state.products, state.customers, state.invoices, state.expenses, state.settings]);
 
   // Auto-remove notifications after 5 seconds
   useEffect(() => {
