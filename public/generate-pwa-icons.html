@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generate PWA Icons</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+      max-width: 500px;
+    }
+    h1 { color: #333; margin-bottom: 10px; }
+    p { color: #666; margin-bottom: 30px; }
+    canvas { display: none; }
+    button {
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      margin: 10px;
+      transition: all 0.3s;
+    }
+    button:hover {
+      background: #0284c7;
+      transform: translateY(-2px);
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
+    .success {
+      background: #dcfce7;
+      color: #166534;
+      border: 2px solid #22c55e;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Generate PWA Icons</h1>
+    <p>Click below to generate and download all required icons</p>
+    <button onclick="generateAndDownload()">✨ Generate & Download Icons</button>
+    <div id="status" class="status"></div>
+  </div>
+  
+  <canvas id="iconCanvas"></canvas>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>
+    function drawIcon(size) {
+      const canvas = document.getElementById('iconCanvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      
+      // Gradient background
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#0ea5e9');
+      gradient.addColorStop(1, '#0284c7');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+      
+      // White "RT" letters
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${size * 0.4}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('RT', size / 2, size / 2);
+      
+      // Border
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = size * 0.05;
+      ctx.strokeRect(0, 0, size, size);
+      
+      return canvas.toDataURL('image/png');
+    }
+    
+    async function generateAndDownload() {
+      try {
+        const zip = new JSZip();
+        
+        // Generate 4 icon files
+        const img192 = drawIcon(192).split(',')[1];
+        const img512 = drawIcon(512).split(',')[1];
+        
+        zip.file('icon-192x192.png', img192, {base64: true});
+        zip.file('icon-512x512.png', img512, {base64: true});
+        zip.file('icon-maskable-192x192.png', img192, {base64: true});
+        zip.file('icon-maskable-512x512.png', img512, {base64: true});
+        
+        const content = await zip.generateAsync({type: 'blob'});
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'raza-traders-pwa-icons.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        document.getElementById('status').className = 'status success';
+        document.getElementById('status').innerHTML = 
+          '✅ Icons downloaded!<br><br>' +
+          '<strong>Next steps:</strong><br>' +
+          '1. Extract the ZIP file<br>' +
+          '2. Copy all 4 PNG files to:<br>' +
+          '<code>c:\\Users\\salma\\Documents\\Raza Traders App\\public\\icons\\</code><br>' +
+          '3. Run: npm run build<br>' +
+          '4. Push to GitHub';
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>
