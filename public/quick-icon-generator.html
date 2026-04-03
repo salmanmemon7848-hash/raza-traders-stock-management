@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Icon Generator - Raza Traders</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    
+    h1 {
+      color: #333;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+    
+    .icon-preview {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+    
+    .icon-box {
+      border: 3px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px;
+      background: #f8fafc;
+    }
+    
+    .icon-box canvas {
+      display: block;
+    }
+    
+    .icon-label {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+    }
+    
+    button {
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin: 10px 5px;
+      box-shadow: 0 4px 6px rgba(14, 165, 233, 0.2);
+    }
+    
+    button:hover {
+      background: #0284c7;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(14, 165, 233, 0.3);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    .btn-secondary {
+      background: #64748b;
+    }
+    
+    .btn-secondary:hover {
+      background: #475569;
+    }
+    
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .status.success {
+      background: #dcfce7;
+      color: #166534;
+      border: 2px solid #22c55e;
+      display: block;
+    }
+    
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 2px solid #ef4444;
+      display: block;
+    }
+    
+    .instructions {
+      background: #f1f5f9;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 20px;
+      text-align: left;
+    }
+    
+    .instructions h3 {
+      color: #334155;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+    
+    .instructions ol {
+      color: #475569;
+      font-size: 14px;
+      padding-left: 20px;
+    }
+    
+    .instructions li {
+      margin-bottom: 8px;
+    }
+    
+    .color-picker {
+      margin: 20px 0;
+    }
+    
+    .color-picker label {
+      display: block;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    input[type="color"] {
+      width: 100px;
+      height: 40px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 PWA Icon Generator</h1>
+    <p class="subtitle">Generate app icons for Raza Traders</p>
+    
+    <div class="color-picker">
+      <label for="iconColor">Icon Color:</label>
+      <input type="color" id="iconColor" value="#0ea5e9" />
+    </div>
+    
+    <div class="icon-preview">
+      <div class="icon-box">
+        <canvas id="icon192" width="192" height="192"></canvas>
+        <div class="icon-label">192×192</div>
+      </div>
+      <div class="icon-box">
+        <canvas id="icon512" width="512" height="512"></canvas>
+        <div class="icon-label">512×512</div>
+      </div>
+    </div>
+    
+    <div>
+      <button onclick="generateIcons()">✨ Generate Icons</button>
+      <button class="btn-secondary" onclick="downloadIcons()">📥 Download Icons</button>
+    </div>
+    
+    <div id="status" class="status"></div>
+    
+    <div class="instructions">
+      <h3>📋 Instructions:</h3>
+      <ol>
+        <li>Choose your preferred icon color (default: sky blue #0ea5e9)</li>
+        <li>Click "Generate Icons" to create both sizes</li>
+        <li>Click "Download Icons" to download as ZIP</li>
+        <li>Extract ZIP and copy PNG files to <code>/public/icons/</code></li>
+        <li>Rebuild your app: <code>npm run build</code></li>
+        <li>Deploy to GitHub!</li>
+      </ol>
+    </div>
+  </div>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>
+    const iconColor = document.getElementById('iconColor');
+    let generated = false;
+    
+    // Draw icon on canvas
+    function drawIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const color = iconColor.value;
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, size, size);
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(1, adjustColor(color, -20));
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+      
+      // Draw "RT" letters
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${size * 0.4}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('RT', size / 2, size / 2);
+      
+      // Add border
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = size * 0.05;
+      ctx.strokeRect(0, 0, size, size);
+      
+      // Add shine effect
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(size, 0);
+      ctx.lineTo(size, size * 0.3);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    // Adjust color brightness
+    function adjustColor(color, amount) {
+      const num = parseInt(color.replace('#', ''), 16);
+      const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+      const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+      const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+      return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+    
+    // Generate icons
+    function generateIcons() {
+      try {
+        drawIcon('icon192', 192);
+        drawIcon('icon512', 512);
+        generated = true;
+        
+        showStatus('✅ Icons generated successfully! Click "Download Icons" to save.', 'success');
+      } catch (error) {
+        showStatus('❌ Error generating icons: ' + error.message, 'error');
+      }
+    }
+    
+    // Download icons as ZIP
+    async function downloadIcons() {
+      if (!generated) {
+        showStatus('⚠️ Please generate icons first!', 'error');
+        return;
+      }
+      
+      try {
+        const zip = new JSZip();
+        
+        // Get canvas data
+        const canvas192 = document.getElementById('icon192');
+        const canvas512 = document.getElementById('icon512');
+        
+        const img192 = canvas192.toDataURL('image/png').split(',')[1];
+        const img512 = canvas512.toDataURL('image/png').split(',')[1];
+        
+        // Add to ZIP
+        zip.file('icon-192x192.png', img192, {base64: true});
+        zip.file('icon-512x512.png', img512, {base64: true});
+        
+        // Generate and download ZIP
+        const content = await zip.generateAsync({type: 'blob'});
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'raza-traders-icons.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showStatus('✅ Icons downloaded! Extract ZIP and copy to /public/icons/ folder', 'success');
+      } catch (error) {
+        showStatus('❌ Error downloading icons: ' + error.message, 'error');
+      }
+    }
+    
+    // Show status message
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = 'status ' + type;
+      
+      setTimeout(() => {
+        status.style.display = 'none';
+      }, 5000);
+    }
+    
+    // Auto-generate on load
+    window.onload = () => {
+      setTimeout(generateIcons, 500);
+    };
+    
+    // Redraw when color changes
+    iconColor.addEventListener('change', () => {
+      if (generated) {
+        generateIcons();
+      }
+    });
+  </script>
+</body>
+</html>
