@@ -298,51 +298,53 @@ const BillingSystem = () => {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Billing System</h1>
-        <p className="text-gray-600">Create invoices and manage sales</p>
+      {/* Header - Responsive padding */}
+      <div className="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Billing System</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Create invoices and manage sales</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Two-column layout that stacks on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Left Column - Product Selection */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Select Product */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-gray-900">Select Product</h3>
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900">Select Product</h3>
               <Button 
                 onClick={() => setAddProductModalOpen(true)}
                 variant="primary"
                 size="sm"
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 w-full sm:w-auto justify-center"
               >
                 <Package size={16} />
-                Add New Product
+                <span className="hidden sm:inline">Add New Product</span>
+                <span className="sm:hidden">Add Product</span>
               </Button>
             </div>
             
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                   Product <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedProduct}
                   onChange={(e) => setSelectedProduct(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                 >
                   <option value="">Choose a product...</option>
                   {availableProducts.map(product => (
                     <option key={product.id} value={product.id}>
-                      {product.name} - Rs. {product.sellingPrice.toLocaleString()} (Stock: {product.quantity})
+                      {product.name} - ₹{product.sellingPrice.toLocaleString()} (Stock: {product.quantity})
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                   Quantity <span className="text-red-500">*</span>
                 </label>
                 <Input
@@ -366,8 +368,8 @@ const BillingSystem = () => {
           </div>
 
           {/* Customer Details */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Customer Details (Optional)</h3>
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Customer Details (Optional)</h3>
             
             <div className="space-y-3">
               <Input
@@ -386,13 +388,13 @@ const BillingSystem = () => {
               
               {/* Payment Status */}
               <div className="border-t pt-3 mt-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-3">
                   Payment Type <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                   <button
                     onClick={() => setPaymentStatus('paid')}
-                    className={`py-3 px-4 rounded-lg font-semibold transition-all border-2 ${
+                    className={`py-2 sm:py-3 px-3 sm:px-4 rounded-lg font-semibold transition-all border-2 text-xs sm:text-sm ${
                       paymentStatus === 'paid'
                         ? 'bg-green-50 border-green-500 text-green-700'
                         : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
@@ -402,7 +404,7 @@ const BillingSystem = () => {
                   </button>
                   <button
                     onClick={() => setPaymentStatus('full_credit')}
-                    className={`py-3 px-4 rounded-lg font-semibold transition-all border-2 ${
+                    className={`py-2 sm:py-3 px-3 sm:px-4 rounded-lg font-semibold transition-all border-2 text-xs sm:text-sm ${
                       paymentStatus === 'full_credit'
                         ? 'bg-red-50 border-red-500 text-red-700'
                         : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
@@ -412,7 +414,7 @@ const BillingSystem = () => {
                   </button>
                   <button
                     onClick={() => setPaymentStatus('partial_credit')}
-                    className={`py-3 px-4 rounded-lg font-semibold transition-all border-2 ${
+                    className={`py-2 sm:py-3 px-3 sm:px-4 rounded-lg font-semibold transition-all border-2 text-xs sm:text-sm ${
                       paymentStatus === 'partial_credit'
                         ? 'bg-yellow-50 border-yellow-500 text-yellow-700'
                         : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
@@ -540,48 +542,49 @@ const BillingSystem = () => {
         </div>
 
         {/* Right Column - Bill Summary */}
-        <div className="space-y-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-gray-900">Bill Summary</h3>
+        <div className="space-y-3 sm:space-y-4">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900">Bill Summary</h3>
               {billItems.length > 0 && (
-                <Button onClick={handleResetBill} variant="outline" size="sm">
+                <Button onClick={handleResetBill} variant="outline" size="sm" className="w-full sm:w-auto">
                   <RefreshCw size={16} className="mr-1" />
-                  Reset
+                  <span className="hidden sm:inline">Reset</span>
                 </Button>
               )}
             </div>
 
             {billItems.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
-                <p>No items in bill</p>
-                <p className="text-sm">Add products from left panel</p>
+                <p className="text-sm">No items in bill</p>
+                <p className="text-xs mt-1">Add products from left panel</p>
               </div>
             ) : (
               <>
-                {/* Bill Items Table */}
-                <div className="overflow-x-auto mb-4">
-                  <table className="w-full text-sm">
+                {/* Bill Items Table - Responsive */}
+                <div className="overflow-x-auto mb-3 sm:mb-4 table-responsive">
+                  <table className="w-full text-xs sm:text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Item</th>
-                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Price</th>
-                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Qty</th>
-                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Total</th>
-                        <th className="px-3 py-2 text-center font-semibold text-gray-700">Action</th>
+                        <th className="px-2 sm:px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Item</th>
+                        <th className="px-2 sm:px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">Price</th>
+                        <th className="px-2 sm:px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">Qty</th>
+                        <th className="px-2 sm:px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">Total</th>
+                        <th className="px-2 sm:px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {billItems.map((item, index) => (
                         <tr key={index} className="border-b border-gray-100">
-                          <td className="px-3 py-3 text-gray-900">{item.name}</td>
-                          <td className="px-3 py-3 text-right text-gray-700">₹{item.price.toLocaleString()}</td>
-                          <td className="px-3 py-3 text-right text-gray-700">{item.quantity}</td>
-                          <td className="px-3 py-3 text-right font-semibold text-gray-900">₹{item.total.toLocaleString()}</td>
-                          <td className="px-3 py-3 text-center">
+                          <td className="px-2 sm:px-3 py-2 sm:py-3 text-gray-900 max-w-[120px] truncate">{item.name}</td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-3 text-right text-gray-700">₹{item.price.toLocaleString()}</td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-3 text-right text-gray-700">{item.quantity}</td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-3 text-right font-semibold text-gray-900">₹{item.total.toLocaleString()}</td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-3 text-center">
                             <button
                               onClick={() => handleRemoveItem(index)}
-                              className="text-red-600 hover:text-red-800 transition-colors"
+                              className="text-red-600 hover:text-red-800 transition-colors p-1"
+                              aria-label="Remove item"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -593,38 +596,38 @@ const BillingSystem = () => {
                 </div>
 
                 {/* Calculations */}
-                <div className="border-t pt-4 space-y-2">
-                  <div className="flex justify-between text-gray-700">
+                <div className="border-t pt-3 sm:pt-4 space-y-2">
+                  <div className="flex justify-between text-xs sm:text-sm text-gray-700">
                     <span>Subtotal:</span>
                     <span className="font-semibold">₹{calculateSubtotal().toLocaleString()}</span>
                   </div>
 
                   {discount > 0 && (
-                    <div className="flex justify-between text-red-600">
+                    <div className="flex justify-between text-xs sm:text-sm text-red-600">
                       <span>Discount ({discountType === 'percentage' ? `${discount}%` : '₹'}):</span>
                       <span>- ₹{calculateDiscount().toLocaleString()}</span>
                     </div>
                   )}
 
                   {showGST && (
-                    <div className="flex justify-between text-gray-700">
+                    <div className="flex justify-between text-xs sm:text-sm text-gray-700">
                       <span>GST ({gstRate}%):</span>
                       <span className="font-semibold">+ ₹{calculateGST().toLocaleString()}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between text-lg font-bold text-green-600 border-t pt-2">
+                  <div className="flex justify-between text-base sm:text-lg font-bold text-green-600 border-t pt-2">
                     <span>Final Total:</span>
                     <span>₹{calculateFinalTotal().toLocaleString()}</span>
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-3 mt-6">
+                {/* Action Buttons - Stack on mobile */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4 sm:mt-6">
                   <Button
                     onClick={handleGenerateInvoice}
                     variant="success"
-                    className="flex-1 flex items-center justify-center gap-2"
+                    className="flex-1 flex items-center justify-center gap-2 w-full"
                   >
                     <Save size={18} />
                     Generate Invoice
@@ -633,9 +636,10 @@ const BillingSystem = () => {
                   <Button
                     onClick={handlePrintInvoice}
                     variant="primary"
-                    className="flex items-center gap-2"
+                    className="flex items-center justify-center gap-2 w-full sm:w-auto"
                   >
                     <Printer size={18} />
+                    <span className="hidden sm:inline">Print</span>
                   </Button>
                 </div>
               </>

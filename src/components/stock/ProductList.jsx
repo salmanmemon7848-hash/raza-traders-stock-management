@@ -128,24 +128,24 @@ const ProductList = () => {
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
-        <Button onClick={() => setIsModalOpen(true)} variant="primary">
+    <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 md:p-6">
+      {/* Header Actions - Responsive layout */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+        <Button onClick={() => setIsModalOpen(true)} variant="primary" className="w-full sm:w-auto">
           <Plus size={20} className="mr-2" />
           Add Product
         </Button>
 
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
           {/* Search */}
-          <div className="relative">
+          <div className="relative w-full sm:w-64">
             <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-full sm:w-64"
+              className="pl-10 pr-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
             />
           </div>
 
@@ -153,17 +153,22 @@ const ProductList = () => {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-full sm:w-auto"
           >
             <option value="">All Categories</option>
             <option value="Furniture">Furniture</option>
             <option value="Electronics">Electronics</option>
+            <option value="Home Appliances">Home Appliances</option>
+            <option value="Office Supplies">Office Supplies</option>
+            <option value="Lighting">Lighting</option>
+            <option value="Decor">Decor</option>
+            <option value="Other">Other</option>
           </select>
         </div>
       </div>
 
-      {/* Products Table */}
-      <Table columns={columns} data={filteredProducts} />
+      {/* Products Table with Card View on Mobile */}
+      <Table columns={columns} data={filteredProducts} enableCardView={true} />
 
       {/* Add/Edit Product Modal */}
       <Modal

@@ -116,28 +116,28 @@ const CustomerList = () => {
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
-        <Button onClick={() => setIsModalOpen(true)} variant="primary">
+    <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 md:p-6">
+      {/* Header Actions - Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+        <Button onClick={() => setIsModalOpen(true)} variant="primary" className="w-full sm:w-auto">
           <Plus size={20} className="mr-2" />
           Add Customer
         </Button>
 
-        <div className="relative">
+        <div className="relative w-full sm:w-64">
           <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search customers..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-full sm:w-64"
+            className="pl-10 pr-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
           />
         </div>
       </div>
 
-      {/* Customers Table */}
-      <Table columns={columns} data={filteredCustomers} />
+      {/* Customers Table with Card View */}
+      <Table columns={columns} data={filteredCustomers} enableCardView={true} />
 
       {/* Add/Edit Customer Modal */}
       <Modal
