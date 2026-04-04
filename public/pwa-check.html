@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PWA Diagnostic Tool</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .check-item {
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      transition: all 0.3s;
+    }
+    .check-item.pass {
+      border-color: #22c55e;
+      background: #dcfce7;
+    }
+    .check-item.fail {
+      border-color: #ef4444;
+      background: #fee2e2;
+    }
+    .check-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .icon {
+      font-size: 24px;
+    }
+    .check-title {
+      font-weight: bold;
+      font-size: 16px;
+      color: #333;
+    }
+    .check-detail {
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-left: 34px;
+    }
+    button {
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 20px;
+      transition: all 0.3s;
+    }
+    button:hover {
+      background: #0284c7;
+      transform: translateY(-2px);
+    }
+    .summary {
+      background: #f1f5f9;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 20px;
+      text-align: center;
+    }
+    .summary.success {
+      background: #dcfce7;
+      border: 3px solid #22c55e;
+    }
+    .summary.fail {
+      background: #fee2e2;
+      border: 3px solid #ef4444;
+    }
+    code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 PWA Installation Check</h1>
+    <p class="subtitle">Verify your app is ready for Android installation</p>
+    
+    <div id="checks"></div>
+    
+    <button onclick="runDiagnostics()">🔄 Run Diagnostics Again</button>
+    
+    <div id="summary" class="summary"></div>
+  </div>
+  
+  <script>
+    async function runDiagnostics() {
+      const checksDiv = document.getElementById('checks');
+      const summaryDiv = document.getElementById('summary');
+      checksDiv.innerHTML = '<p style="text-align:center;color:#666;">Running checks...</p>';
+      
+      const results = [];
+      
+      // Check 1: Manifest exists
+      try {
+        const manifestResponse = await fetch('/manifest.json');
+        if (manifestResponse.ok) {
+          const manifest = await manifestResponse.json();
+          results.push({
+            pass: true,
+            title: 'Manifest File',
+            detail: `✅ Found! Display mode: <code>${manifest.display}</code>, Name: ${manifest.name}`
+          });
+        } else {
+          results.push({
+            pass: false,
+            title: 'Manifest File',
+            detail: '❌ Not found or not accessible'
+          });
+        }
+      } catch (error) {
+        results.push({
+          pass: false,
+          title: 'Manifest File',
+          detail: `❌ Error: ${error.message}`
+        });
+      }
+      
+      // Check 2: Icons exist
+      const iconChecks = [
+        '/icons/icon-192x192.png',
+        '/icons/icon-512x512.png',
+        '/icons/icon-maskable-192x192.png',
+        '/icons/icon-maskable-512x512.png'
+      ];
+      
+      let iconsFound = 0;
+      for (const icon of iconChecks) {
+        try {
+          const response = await fetch(icon);
+          if (response.ok) iconsFound++;
+        } catch (e) {}
+      }
+      
+      results.push({
+        pass: iconsFound === 4,
+        title: 'Icon Files',
+        detail: iconsFound === 4 
+          ? `✅ All 4 icons found (${iconsFound}/4)`
+          : `❌ Only ${iconsFound}/4 icons found. Need all 4 for PWA!`
+      });
+      
+      // Check 3: Service Worker
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        results.push({
+          pass: registrations.length > 0,
+          title: 'Service Worker',
+          detail: registrations.length > 0
+            ? `✅ Registered (${registrations.length} worker(s))`
+            : '❌ Not registered. Refresh page or check console.'
+        });
+      } else {
+        results.push({
+          pass: false,
+          title: 'Service Worker Support',
+          detail: '❌ Browser does not support service workers'
+        });
+      }
+      
+      // Check 4: HTTPS
+      results.push({
+        pass: window.location.protocol === 'https:' || window.location.hostname === 'localhost',
+        title: 'HTTPS Connection',
+        detail: window.location.protocol === 'https:' || window.location.hostname === 'localhost'
+          ? `✅ Secure connection (${window.location.protocol})`
+          : `❌ Not secure (${window.location.protocol}). PWA requires HTTPS!`
+      });
+      
+      // Check 5: Standalone mode
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+        || window.navigator.standalone === true;
+      results.push({
+        pass: isStandalone,
+        title: 'Display Mode',
+        detail: isStandalone
+          ? '✅ Running in STANDALONE mode (no browser UI!)'
+          : '⚠️ Running in browser mode. Install from Chrome menu to fix.'
+      });
+      
+      // Render results
+      checksDiv.innerHTML = results.map(result => `
+        <div class="check-item ${result.pass ? 'pass' : 'fail'}">
+          <div class="check-header">
+            <span class="icon">${result.pass ? '✅' : '❌'}</span>
+            <span class="check-title">${result.title}</span>
+          </div>
+          <div class="check-detail">${result.detail}</div>
+        </div>
+      `).join('');
+      
+      // Summary
+      const allPass = results.every(r => r.pass);
+      summaryDiv.className = `summary ${allPass ? 'success' : 'fail'}`;
+      summaryDiv.innerHTML = allPass
+        ? `<h2 style="color:#166534;margin-bottom:10px;">🎉 ALL CHECKS PASSED!</h2>
+           <p style="color:#166534;">Your PWA is ready! If still showing browser UI:</p>
+           <ol style="text-align:left;margin-top:10px;color:#166534;line-height:1.8;">
+             <li>Uninstall current app from phone</li>
+             <li>Clear Chrome cache (Settings → Privacy)</li>
+             <li>Revisit your app URL</li>
+             <li>Tap Chrome menu (⋮) → "Install app"</li>
+             <li>Should now open WITHOUT browser UI!</li>
+           </ol>`
+        : `<h2 style="color:#991b1b;margin-bottom:10px;">⚠️ ISSUES FOUND</h2>
+           <p style="color:#991b1b;">Fix the red items above, then rebuild and redeploy.</p>`;
+    }
+    
+    // Auto-run on load
+    window.onload = () => setTimeout(runDiagnostics, 500);
+  </script>
+</body>
+</html>
