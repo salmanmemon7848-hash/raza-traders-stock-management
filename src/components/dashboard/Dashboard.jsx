@@ -9,7 +9,7 @@ import RecentCustomers from './RecentCustomers';
 import { AlertTriangle, IndianRupee, TrendingUp, TrendingDown } from 'lucide-react';
 
 const Dashboard = () => {
-  const { invoices, expenses } = useAppContext();
+  const { invoices, expenses, products } = useAppContext();
   
   // Calculate today's metrics
   const today = useMemo(() => new Date().toDateString(), []);
@@ -26,7 +26,25 @@ const Dashboard = () => {
       .reduce((sum, exp) => sum + exp.amount, 0);
   }, [expenses, today]);
 
-  const todayProfit = useMemo(() => todaySales - todayExpenses, [todaySales, todayExpenses]);
+  // Calculate today's purchase cost for sold items
+  const todayPurchaseCost = useMemo(() => {
+    const todayInvoices = invoices.filter(inv => new Date(inv.createdAt).toDateString() === today);
+    
+    return todayInvoices.reduce((totalCost, invoice) => {
+      // For each item in the invoice, calculate: purchasePrice × quantity
+      const invoiceCost = invoice.items.reduce((itemCost, item) => {
+        const product = products.find(p => p.id === item.productId);
+        const purchasePrice = product ? product.purchasePrice : 0;
+        return itemCost + (purchasePrice * item.quantity);
+      }, 0);
+      
+      return totalCost + invoiceCost;
+    }, 0);
+  }, [invoices, products, today]);
+
+  // CORRECT PROFIT CALCULATION:
+  // Profit = Sales - Purchase Cost - Expenses
+  const todayProfit = useMemo(() => todaySales - todayPurchaseCost - todayExpenses, [todaySales, todayPurchaseCost, todayExpenses]);
   
   // Calculate total credit (udhaar)
   const totalCredit = invoices
