@@ -201,6 +201,27 @@ export const appReducer = (state, action) => {
       };
     }
 
+    case 'CLEAR_PRODUCTS': {
+      return {
+        ...state,
+        products: []
+      };
+    }
+
+    case 'CLEAR_CUSTOMERS': {
+      return {
+        ...state,
+        customers: []
+      };
+    }
+
+    case 'CLEAR_EXPENSES': {
+      return {
+        ...state,
+        expenses: []
+      };
+    }
+
     case 'ADD_EXPENSE': {
       const newExpense = {
         ...action.payload,

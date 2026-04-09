@@ -1,4 +1,6 @@
 import { useAppContext } from '../contexts/AppContext';
+import { saveDataToCloud } from '../services/firebaseService';
+import { initialState } from '../contexts/appReducer';
 
 export const useBackup = () => {
   const { dispatch, success, error } = useAppContext();
@@ -68,19 +70,26 @@ export const useBackup = () => {
     });
   };
 
-  const clearAllData = () => {
-    if (window.confirm('⚠️ Are you sure you want to delete ALL data? This CANNOT be undone!\n\nThis will delete:\n- All products\n- All customers\n- All invoices\n- All settings')) {
+  const clearAllData = async () => {
+    if (window.confirm('⚠️ Are you sure you want to delete ALL data? This CANNOT be undone!\n\nThis will delete:\n- All products\n- All customers\n- All invoices\n- All expenses\n- All settings')) {
       if (window.confirm('⚠️ FINAL WARNING: This action is PERMANENT! Click OK to confirm deletion.')) {
         try {
-          // Clear localStorage
+          // Clear localStorage immediately
           localStorage.removeItem('razaTradersData');
-          
-          // Set a flag to prevent loading initial data
           localStorage.setItem('dataCleared', 'true');
           
-          success('All data cleared successfully!');
+          // Clear cloud data to prevent sync from restoring old data
+          await saveDataToCloud({
+            products: [],
+            customers: [],
+            invoices: [],
+            expenses: [],
+            settings: initialState.settings
+          });
           
-          // Reload page after delay
+          success('✅ All data cleared successfully!');
+          
+          // Reload page after delay to show clean state
           setTimeout(() => {
             window.location.reload();
           }, 1500);

@@ -20,12 +20,10 @@ const ExpenseForm = ({ expense, onSave, onCancel }) => {
 
   // Default categories + Other option
   const defaultCategories = [
-    'Rent',
     'Electricity Bill',
     'Staff Salary',
     'Transport / Delivery',
-    'Maintenance / Repair',
-    'Other' // ← Added Other option
+    'Other' // Custom category option
   ];
   
   const customCategories = settings.expenseCategories || [];
@@ -49,10 +47,6 @@ const ExpenseForm = ({ expense, onSave, onCancel }) => {
     if (!formData.date) {
       errors.date = 'Date is required';
     }
-    // Validate custom category if "Other" is selected
-    if (formData.category === 'Other' && !formData.customCategory?.trim()) {
-      errors.customCategory = 'Please enter a custom category name';
-    }
 
     if (Object.keys(errors).length > 0) {
       setErrors(errors);
@@ -60,9 +54,9 @@ const ExpenseForm = ({ expense, onSave, onCancel }) => {
     }
 
     try {
-      // Determine final category name
-      const finalCategory = formData.category === 'Other' && formData.customCategory?.trim() 
-        ? formData.customCategory.trim() 
+      // Determine final category name (save as "Other" if left blank)
+      const finalCategory = formData.category === 'Other' 
+        ? (formData.customCategory?.trim() || 'Other')
         : formData.category;
 
       // Save the expense
@@ -170,7 +164,7 @@ const ExpenseForm = ({ expense, onSave, onCancel }) => {
         {formData.category === 'Other' && (
           <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <label className="block text-sm font-semibold text-yellow-800 mb-2">
-              ➕ Enter Custom Category Name *
+              ➕ Enter Custom Category Name (Optional)
             </label>
             <input
               type="text"
