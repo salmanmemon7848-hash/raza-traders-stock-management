@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bell, Menu } from 'lucide-react';
+import SyncStatus from '../common/SyncStatus';
 
 const Header = ({ onMenuClick, title }) => {
   return (
@@ -20,6 +21,9 @@ const Header = ({ onMenuClick, title }) => {
         </div>
         
         <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+          {/* Sync Status Indicator */}
+          <SyncStatus />
+          
           {/* Notifications - Better mobile sizing */}
           <button 
             className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100 touch-target-large"
