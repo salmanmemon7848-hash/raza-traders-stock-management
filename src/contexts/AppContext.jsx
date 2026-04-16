@@ -32,7 +32,8 @@ export const AppProvider = ({ children }) => {
             products: cloudData.products?.length || 0,
             customers: cloudData.customers?.length || 0,
             invoices: cloudData.invoices?.length || 0,
-            expenses: cloudData.expenses?.length || 0
+            expenses: cloudData.expenses?.length || 0,
+            payments: cloudData.payments?.length || 0
           });
           dispatch({ type: 'LOAD_DATA', payload: cloudData });
           dispatch({ type: 'SET_LOADING', payload: false });
@@ -69,6 +70,7 @@ export const AppProvider = ({ children }) => {
               customers: initialCustomers,
               invoices: initialInvoices,
               expenses: [],
+              payments: [],
               settings: initialSettings
             }
           });
@@ -105,6 +107,7 @@ export const AppProvider = ({ children }) => {
           customers: state.customers,
           invoices: state.invoices,
           expenses: state.expenses,
+          payments: state.payments,
           settings: state.settings
         };
         
@@ -118,7 +121,8 @@ export const AppProvider = ({ children }) => {
           products: state.products.length,
           customers: state.customers.length,
           invoices: state.invoices.length,
-          expenses: state.expenses.length
+          expenses: state.expenses.length,
+          payments: state.payments.length
         });
       } catch (error) {
         console.error('❌ Error saving data:', error);
@@ -127,7 +131,7 @@ export const AppProvider = ({ children }) => {
     };
     
     saveData();
-  }, [state.products, state.customers, state.invoices, state.expenses, state.settings]);
+  }, [state.products, state.customers, state.invoices, state.expenses, state.payments, state.settings]);
   
   // Subscribe to real-time updates from cloud
   useEffect(() => {
@@ -137,7 +141,8 @@ export const AppProvider = ({ children }) => {
         products: cloudData.products?.length || 0,
         customers: cloudData.customers?.length || 0,
         invoices: cloudData.invoices?.length || 0,
-        expenses: cloudData.expenses?.length || 0
+        expenses: cloudData.expenses?.length || 0,
+        payments: cloudData.payments?.length || 0
       });
       dispatch({ type: 'LOAD_DATA', payload: cloudData });
     });

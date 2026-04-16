@@ -5,6 +5,7 @@ export const initialState = {
   customers: [],
   invoices: [],
   expenses: [],
+  payments: [], // Received payments
   settings: {
     lowStockThreshold: 5,
     companyName: 'Raza Traders',
@@ -274,6 +275,55 @@ export const appReducer = (state, action) => {
           ...state.settings,
           expenseCategories: categories.filter(cat => cat !== action.payload)
         }
+      };
+    }
+
+    case 'ADD_PAYMENT': {
+      const newPayment = {
+        ...action.payload,
+        id: generateId(),
+        createdAt: new Date().toISOString()
+      };
+      
+      // Update customer's credit balance if linked to an invoice
+      let updatedInvoices = state.invoices;
+      if (action.payload.invoiceId) {
+        updatedInvoices = state.invoices.map(invoice => {
+          if (invoice.id === action.payload.invoiceId) {
+            const remainingCredit = (invoice.creditAmount || 0) - action.payload.amount;
+            return {
+              ...invoice,
+              creditAmount: Math.max(0, remainingCredit),
+              paymentStatus: remainingCredit <= 0 ? 'paid' : 'partial_credit',
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return invoice;
+        });
+      }
+      
+      return {
+        ...state,
+        payments: [...state.payments, newPayment],
+        invoices: updatedInvoices
+      };
+    }
+
+    case 'UPDATE_PAYMENT': {
+      return {
+        ...state,
+        payments: state.payments.map(payment =>
+          payment.id === action.payload.id
+            ? { ...payment, ...action.payload, updatedAt: new Date().toISOString() }
+            : payment
+        )
+      };
+    }
+
+    case 'DELETE_PAYMENT': {
+      return {
+        ...state,
+        payments: state.payments.filter(payment => payment.id !== action.payload)
       };
     }
 

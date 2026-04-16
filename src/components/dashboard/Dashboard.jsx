@@ -9,7 +9,7 @@ import RecentCustomers from './RecentCustomers';
 import { AlertTriangle, IndianRupee, TrendingUp, TrendingDown } from 'lucide-react';
 
 const Dashboard = () => {
-  const { invoices, expenses, products } = useAppContext();
+  const { invoices, expenses, products, payments } = useAppContext();
   
   // Calculate today's metrics
   const today = useMemo(() => new Date().toDateString(), []);
@@ -45,6 +45,13 @@ const Dashboard = () => {
   // CORRECT PROFIT CALCULATION:
   // Profit = Sales - Purchase Cost - Expenses
   const todayProfit = useMemo(() => todaySales - todayPurchaseCost - todayExpenses, [todaySales, todayPurchaseCost, todayExpenses]);
+  
+  // Calculate today's received payments
+  const todayReceivedPayments = useMemo(() => {
+    return payments
+      .filter(pay => new Date(pay.date || pay.createdAt).toDateString() === today)
+      .reduce((sum, pay) => sum + pay.amount, 0);
+  }, [payments, today]);
   
   // Calculate total credit (udhaar)
   const totalCredit = invoices
