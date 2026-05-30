@@ -1,233 +1,129 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../contexts/AppContext';
-import Button from '../common/Button';
 import Input from '../common/Input';
-import { X, Save } from 'lucide-react';
+import Select from '../common/Select';
+import Button from '../common/Button';
+
+const DEFAULT_CATEGORIES = [
+  'Rent',
+  'Electricity Bill',
+  'Staff Salary',
+  'Transport / Delivery',
+  'Maintenance / Repair',
+];
+
+const today = () => new Date().toISOString().split('T')[0];
 
 const ExpenseForm = ({ expense, onSave, onCancel }) => {
   const { settings } = useAppContext();
-  
-  const [formData, setFormData] = useState({
+  const customCategories = settings.expenseCategories || [];
+  const allCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...customCategories]));
+
+  const isCustomInitially = expense && !allCategories.includes(expense.category);
+
+  const [form, setForm] = useState({
     title: expense?.title || '',
     amount: expense?.amount?.toString() || '',
-    category: expense?.category || '',
-    date: expense?.date ? new Date(expense.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    category: isCustomInitially ? 'Other' : (expense?.category || ''),
+    customCategory: isCustomInitially ? expense.category : '',
+    date: expense?.date ? new Date(expense.date).toISOString().split('T')[0] : today(),
     notes: expense?.notes || '',
-    customCategory: '' // For "Other" category
   });
-  
   const [errors, setErrors] = useState({});
 
-  // Default categories + Other option
-  const defaultCategories = [
-    'Electricity Bill',
-    'Staff Salary',
-    'Transport / Delivery',
-    'Other' // Custom category option
-  ];
-  
-  const customCategories = settings.expenseCategories || [];
-  // Show custom categories separately (not including "Other")
-  const allCategories = [...defaultCategories, ...customCategories];
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    // Validate form
-    const errors = {};
-    if (!formData.title || formData.title.trim() === '') {
-      errors.title = 'Expense title is required';
-    }
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      errors.amount = 'Amount must be greater than 0';
-    }
-    if (!formData.category) {
-      errors.category = 'Category is required';
-    }
-    if (!formData.date) {
-      errors.date = 'Date is required';
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setErrors(errors);
-      return;
-    }
-
-    try {
-      // Determine final category name (save as "Other" if left blank)
-      const finalCategory = formData.category === 'Other' 
-        ? (formData.customCategory?.trim() || 'Other')
-        : formData.category;
-
-      // Save the expense
-      onSave({
-        ...expense,
-        ...formData,
-        category: finalCategory,
-        amount: parseFloat(formData.amount)
-      });
-      
-      // If "Other" was selected and a custom category was entered, save it to settings for future use
-      if (formData.category === 'Other' && formData.customCategory?.trim()) {
-        const newCategory = formData.customCategory.trim();
-        const existingCategories = settings.expenseCategories || [];
-        // Only add if it doesn't already exist
-        if (!existingCategories.includes(newCategory)) {
-          // This will be handled by the parent component through context
-        }
-      }
-    } catch (error) {
-      console.error('Error saving expense:', error);
-      setErrors({ general: 'Failed to save expense. Please try again.' });
-    }
+  const set = (k, v) => {
+    setForm({ ...form, [k]: v });
+    setErrors(p => ({ ...p, [k]: '' }));
   };
 
-  const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: null }));
-    }
+  const submit = (e) => {
+    e.preventDefault();
+    const errs = {};
+    if (!form.title.trim()) errs.title = 'Required';
+    if (!form.amount || parseFloat(form.amount) <= 0) errs.amount = 'Must be > 0';
+    if (!form.category) errs.category = 'Pick a category';
+    if (form.category === 'Other' && !form.customCategory.trim()) errs.customCategory = 'Enter the new category name';
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+
+    const finalCategory = form.category === 'Other' ? form.customCategory.trim() : form.category;
+    onSave({
+      ...(expense || {}),
+      title: form.title.trim(),
+      amount: parseFloat(form.amount),
+      category: finalCategory,
+      date: form.date,
+      notes: form.notes.trim(),
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-900">
-          {expense ? 'Edit Expense' : 'Add New Expense'}
-        </h2>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <X size={24} />
-        </button>
-      </div>
-
-      {/* General Error */}
-      {errors.general && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
-          ❌ {errors.general}
-        </div>
-      )}
-
-      {/* Expense Title */}
+    <form onSubmit={submit} className="space-y-4">
       <Input
-        label="Expense Title *"
-        type="text"
-        value={formData.title}
-        onChange={(e) => handleChange('title', e.target.value)}
-        placeholder="e.g., Electricity Bill, Rent, Transport"
+        label="What was this for?"
+        required
+        value={form.title}
+        onChange={(e) => set('title', e.target.value)}
         error={errors.title}
-        required
+        placeholder="e.g. October electricity bill"
       />
 
-      {/* Amount */}
-      <Input
-        label="Amount (₹) *"
-        type="number"
-        value={formData.amount}
-        onChange={(e) => handleChange('amount', e.target.value)}
-        placeholder="Enter amount"
-        min="0.01"
-        step="0.01"
-        error={errors.amount}
-        required
-      />
-
-      {/* Category */}
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Category *
-        </label>
-        <select
-          value={formData.category}
-          onChange={(e) => handleChange('category', e.target.value)}
-          className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-shadow bg-white text-gray-900 ${
-            errors.category ? 'border-red-300' : 'border-gray-300'
-          }`}
-        >
-          <option value="">Select Category</option>
-          {allCategories.map((cat, index) => (
-            <option key={index} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-        {errors.category && (
-          <p className="mt-1 text-sm text-red-600">{errors.category}</p>
-        )}
-        
-        {/* Custom Category Input - Shows when "Other" is selected */}
-        {formData.category === 'Other' && (
-          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <label className="block text-sm font-semibold text-yellow-800 mb-2">
-              ➕ Enter Custom Category Name (Optional)
-            </label>
-            <input
-              type="text"
-              value={formData.customCategory}
-              onChange={(e) => handleChange('customCategory', e.target.value)}
-              placeholder="e.g., Furniture Polishing, Repair Tools, etc."
-              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-shadow text-gray-900 ${
-                errors.customCategory ? 'border-red-300' : 'border-gray-300'
-              }`}
-              autoFocus
-            />
-            {errors.customCategory && (
-              <p className="mt-1 text-sm text-red-600">{errors.customCategory}</p>
-            )}
-            <p className="mt-2 text-xs text-yellow-700">
-              💡 This category will be saved and available for future use
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Date */}
-      <Input
-        label="Date *"
-        type="date"
-        value={formData.date}
-        onChange={(e) => handleChange('date', e.target.value)}
-        error={errors.date}
-        required
-      />
-
-      {/* Notes (Optional) */}
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Notes (Optional)
-        </label>
-        <textarea
-          value={formData.notes}
-          onChange={(e) => handleChange('notes', e.target.value)}
-          placeholder="Additional details about this expense..."
-          rows="3"
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-shadow resize-none text-gray-900"
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          label="Amount"
+          required
+          type="number"
+          value={form.amount}
+          onChange={(e) => set('amount', e.target.value)}
+          error={errors.amount}
+          prefix="₹"
+          placeholder="0"
+        />
+        <Input
+          label="Date"
+          required
+          type="date"
+          value={form.date}
+          onChange={(e) => set('date', e.target.value)}
         />
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 pt-4">
-        <Button
-          type="submit"
-          variant="primary"
-          className="flex-1"
-          icon={<Save size={18} />}
-        >
-          {expense ? 'Update Expense' : 'Add Expense'}
-        </Button>
-        <Button
-          type="button"
-          onClick={onCancel}
-          variant="secondary"
-          className="flex-1"
-        >
-          Cancel
-        </Button>
+      <Select
+        label="Category"
+        required
+        value={form.category}
+        onChange={(e) => set('category', e.target.value)}
+        error={errors.category}
+      >
+        <option value="">Select category</option>
+        {allCategories.map(c => <option key={c}>{c}</option>)}
+        <option value="Other">+ Add new category</option>
+      </Select>
+
+      {form.category === 'Other' && (
+        <Input
+          label="New category name"
+          value={form.customCategory}
+          onChange={(e) => set('customCategory', e.target.value)}
+          error={errors.customCategory}
+          placeholder="e.g. Marketing, Internet"
+          hint="Saved for future use"
+        />
+      )}
+
+      <div>
+        <label className="form-label">Notes (optional)</label>
+        <textarea
+          rows={2}
+          value={form.notes}
+          onChange={(e) => set('notes', e.target.value)}
+          className="pretty-input resize-none"
+          placeholder="Anything to remember about this expense"
+        />
+      </div>
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
+        <Button variant="primary" type="submit">{expense ? 'Update' : 'Add expense'}</Button>
       </div>
     </form>
   );

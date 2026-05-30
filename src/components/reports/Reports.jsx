@@ -1,545 +1,447 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../../contexts/AppContext';
-import Button from '../common/Button';
-import { FileText, Package, Users, Download, AlertTriangle, TrendingUp } from 'lucide-react';
+import {
+  Package, Users, FileText, AlertTriangle, TrendingUp, Download,
+  MessageCircle,
+} from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Button from '../common/Button';
+import Badge from '../common/Badge';
+import PageHeader from '../common/PageHeader';
+import StatCard from '../common/StatCard';
+import EmptyState from '../common/EmptyState';
+import { Card, CardHeader, CardBody } from '../common/Card';
+import {
+  formatINR,
+  calculateInvoiceGrossProfit,
+  calculateTotalGrossProfit,
+  getInvoiceOutstanding,
+  calculateTotalOutstanding,
+} from '../../utils/calculations';
+import { formatDate } from '../../utils/dates';
+import { openWhatsApp } from '../../utils/whatsapp';
+
+const TABS = [
+  { id: 'profit',   label: 'Profit',          icon: TrendingUp },
+  { id: 'credit',   label: 'Credit (Udhaar)', icon: AlertTriangle },
+  { id: 'billing',  label: 'Sales',           icon: FileText },
+  { id: 'stock',    label: 'Stock',           icon: Package },
+  { id: 'customers',label: 'Customers',       icon: Users },
+];
+
+const buildPdf = (title, head, body, fileName) => {
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.setTextColor(40, 40, 60);
+  doc.text(title, 105, 16, null, null, 'center');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 110);
+  doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 105, 22, null, null, 'center');
+  autoTable(doc, {
+    startY: 30,
+    head,
+    body,
+    theme: 'striped',
+    headStyles: { fillColor: [79, 70, 229] },
+    styles: { fontSize: 9 },
+  });
+  doc.save(fileName);
+};
 
 const Reports = () => {
-  const [activeTab, setActiveTab] = useState('stock');
-  const { products, customers, invoices } = useAppContext();
-  
-  // Calculate credit/udhaar totals
-  const totalCredit = invoices
-    .filter(inv => inv.isCredit || (inv.paymentStatus && inv.paymentStatus !== 'paid'))
-    .reduce((sum, inv) => sum + (inv.creditAmount || inv.grandTotal), 0);
-  
-  const pendingCount = invoices.filter(inv => inv.isCredit || (inv.paymentStatus && inv.paymentStatus !== 'paid')).length;
-  
-  // Calculate customer-wise credit
-  const getCustomerCredit = (customerId) => {
-    return invoices
-      .filter(inv => inv.customer?.id === customerId && (inv.isCredit || (inv.paymentStatus && inv.paymentStatus !== 'paid')))
-      .reduce((sum, inv) => sum + (inv.creditAmount || inv.grandTotal), 0);
-  };
-  
-  // Calculate profit metrics
-  const calculateProfit = (invoice) => {
-    let totalProfit = 0;
-    invoice.items.forEach(item => {
-      const product = products.find(p => p.id === item.productId);
-      if (product) {
-        const profitPerItem = (product.sellingPrice || 0) - (product.purchasePrice || 0);
-        totalProfit += profitPerItem * item.quantity;
-      }
-    });
-    return totalProfit;
-  };
-  
-  const totalProfit = invoices.reduce((sum, inv) => sum + calculateProfit(inv), 0);
-  const todayProfit = invoices
-    .filter(inv => new Date(inv.createdAt).toDateString() === new Date().toDateString())
-    .reduce((sum, inv) => sum + calculateProfit(inv), 0);
+  const { products, customers, invoices, settings } = useAppContext();
+  const [tab, setTab] = useState('profit');
 
-  // Generate Stock Report PDF
-  const downloadStockReport = () => {
-    try {
-      const doc = new jsPDF();
-      
-      // Title
-      doc.setFontSize(18);
-      doc.setTextColor(14, 116, 144);
-      doc.text('STOCK REPORT', 105, 20, null, null, 'center');
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 27, null, null, 'center');
-      
-      // Table
-      const tableData = products.map(product => [
-        product.name,
-        product.category,
-        `₹${product.purchasePrice.toLocaleString()}`,
-        `₹${product.sellingPrice.toLocaleString()}`,
-        product.quantity.toString(),
-        product.modelNumber || '-'
-      ]);
+  // Profit aggregates
+  const totalSales = useMemo(() => invoices.reduce((s, i) => s + i.grandTotal, 0), [invoices]);
+  const totalGrossProfit = useMemo(() => calculateTotalGrossProfit(invoices, products), [invoices, products]);
 
-      autoTable(doc, {
-        startY: 35,
-        head: [['Product Name', 'Category', 'Purchase Price', 'Selling Price', 'Stock Qty', 'Model No']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: { fillColor: [14, 116, 144] },
-        margin: { top: 35 }
-      });
-
-      doc.save(`Stock-Report-${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error('Stock report error:', error);
-    }
-  };
-
-  // Generate Customer Report PDF
-  const downloadCustomerReport = () => {
-    try {
-      const doc = new jsPDF();
-      
-      // Title
-      doc.setFontSize(18);
-      doc.setTextColor(14, 116, 144);
-      doc.text('CUSTOMER REPORT', 105, 20, null, null, 'center');
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 27, null, null, 'center');
-      
-      // Table
-      const tableData = customers.map(customer => [
-        customer.name,
-        customer.phone || '-',
-        customer.address || '-'
-      ]);
-
-      autoTable(doc, {
-        startY: 35,
-        head: [['Customer Name', 'Phone', 'Address']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: { fillColor: [14, 116, 144] },
-        margin: { top: 35 }
-      });
-
-      doc.save(`Customer-Report-${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error('Customer report error:', error);
-    }
-  };
-
-  // Generate Billing History Report PDF
-  const downloadBillingReport = () => {
-    try {
-      const doc = new jsPDF();
-      
-      // Title
-      doc.setFontSize(18);
-      doc.setTextColor(14, 116, 144);
-      doc.text('BILLING HISTORY REPORT', 105, 20, null, null, 'center');
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 27, null, null, 'center');
-      
-      // Table
-      const tableData = invoices.map(invoice => [
-        invoice.invoiceNumber,
-        new Date(invoice.createdAt).toLocaleDateString(),
-        invoice.customer?.name || 'Walk-in Customer',
-        invoice.items.length.toString(),
-        `₹${invoice.grandTotal.toLocaleString()}`
-      ]);
-
-      autoTable(doc, {
-        startY: 35,
-        head: [['Invoice No', 'Date', 'Customer', 'Items', 'Total Amount']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: { fillColor: [14, 116, 144] },
-        margin: { top: 35 }
-      });
-
-      doc.save(`Billing-Report-${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error('Billing report error:', error);
-    }
-  };
+  // Credit aggregates
+  const totalOutstanding = useMemo(() => calculateTotalOutstanding(invoices), [invoices]);
+  const pendingInvoices = useMemo(() => invoices.filter(i => getInvoiceOutstanding(i) > 0), [invoices]);
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* Header - Responsive */}
-      <div className="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Reports</h1>
-        <p className="text-xs sm:text-sm text-gray-600">View and export business reports</p>
+    <div className="page-shell">
+      <PageHeader
+        title="Reports"
+        subtitle="Insights into sales, profit, stock, and outstanding amounts."
+      />
+
+      {/* Tabs */}
+      <div className="border-b border-slate-200">
+        <div className="flex gap-1 overflow-x-auto scrollbar-hide">
+          {TABS.map(t => {
+            const Icon = t.icon;
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`px-3 sm:px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-2
+                  ${active ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
+              >
+                <Icon size={16} />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Tabs - Scrollable on mobile */}
-      <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-200 overflow-x-auto scrollbar-hide pb-2">
-        <button
-          onClick={() => setActiveTab('stock')}
-          className={`px-3 sm:px-4 py-2 sm:py-3 font-semibold transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-sm ${
-            activeTab === 'stock'
-              ? 'border-b-2 border-primary-600 text-primary-600'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <Package size={18} className="sm:size-5" />
-          <span className="hidden xs:inline">Stock Report</span>
-          <span className="xs:hidden">Stock</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('customers')}
-          className={`px-3 sm:px-4 py-2 sm:py-3 font-semibold transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-sm ${
-            activeTab === 'customers'
-              ? 'border-b-2 border-primary-600 text-primary-600'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <Users size={18} className="sm:size-5" />
-          <span className="hidden xs:inline">Customer Report</span>
-          <span className="xs:hidden">Customers</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('billing')}
-          className={`px-3 sm:px-4 py-2 sm:py-3 font-semibold transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-sm ${
-            activeTab === 'billing'
-              ? 'border-b-2 border-primary-600 text-primary-600'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <FileText size={18} className="sm:size-5" />
-          <span className="hidden xs:inline">Billing History</span>
-          <span className="xs:hidden">Billing</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('credit')}
-          className={`px-3 sm:px-4 py-2 sm:py-3 font-semibold transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-sm ${
-            activeTab === 'credit'
-              ? 'border-b-2 border-red-600 text-red-600'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <AlertTriangle size={18} className="sm:size-5" />
-          <span className="hidden xs:inline">Credit / Udhaar ({pendingCount})</span>
-          <span className="xs:hidden">Credit ({pendingCount})</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('profit')}
-          className={`px-3 sm:px-4 py-2 sm:py-3 font-semibold transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap text-xs sm:text-sm ${
-            activeTab === 'profit'
-              ? 'border-b-2 border-green-600 text-green-600'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <TrendingUp size={18} className="sm:size-5" />
-          <span className="hidden xs:inline">Profit Report</span>
-          <span className="xs:hidden">Profit</span>
-        </button>
-      </div>
-
-      {/* Stock Report */}
-      {activeTab === 'stock' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Stock Report</h2>
-            <Button onClick={downloadStockReport} variant="primary" className="flex items-center gap-2 w-full sm:w-auto">
-              <Download size={18} />
-              <span>Download PDF</span>
-            </Button>
+      {/* PROFIT */}
+      {tab === 'profit' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <StatCard label="Total Sales" value={formatINR(totalSales)} icon={FileText} tone="brand" />
+            <StatCard label="Gross Profit" value={formatINR(totalGrossProfit)} icon={TrendingUp} tone="success" />
+            <StatCard label="Avg / Bill" value={formatINR(invoices.length ? totalGrossProfit / invoices.length : 0)} tone="neutral" />
           </div>
 
-          {products.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <p>No products in stock</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto table-responsive">
-              <table className="w-full text-xs sm:text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Product Name</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Category</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-semibold text-gray-700 whitespace-nowrap">Purchase Price</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-semibold text-gray-700 whitespace-nowrap">Selling Price</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-semibold text-gray-700 whitespace-nowrap">Stock Quantity</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Model Number</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map((product, index) => (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-gray-900 font-medium max-w-[150px] truncate">{product.name}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-gray-700">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          product.category === 'Furniture' 
-                            ? 'bg-blue-100 text-blue-700'
-                            : product.category === 'Electronics'
-                            ? 'bg-purple-100 text-purple-700'
-                            : product.category === 'Home Appliances'
-                            ? 'bg-green-100 text-green-700'
-                            : product.category === 'Office Supplies'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : product.category === 'Lighting'
-                            ? 'bg-pink-100 text-pink-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {product.category}
-                        </span>
-                      </td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-right text-gray-700 whitespace-nowrap">₹{product.purchasePrice.toLocaleString()}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-right text-gray-900 font-semibold whitespace-nowrap">₹{product.sellingPrice.toLocaleString()}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-right whitespace-nowrap">
-                        <span className={product.quantity <= 5 ? 'text-red-600 font-bold' : 'text-gray-700'}>
-                          {product.quantity}
-                        </span>
-                      </td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-gray-700 max-w-[100px] truncate">{product.modelNumber || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Customer Report */}
-      {activeTab === 'customers' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Customer Report</h2>
-            <Button onClick={downloadCustomerReport} variant="primary" className="flex items-center gap-2 w-full sm:w-auto">
-              <Download size={18} />
-              <span>Download PDF</span>
-            </Button>
-          </div>
-
-          {customers.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <p>No customers found</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto table-responsive">
-              <table className="w-full text-xs sm:text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Customer Name</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Phone Number</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Address</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customers.map((customer, index) => (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-gray-900 font-medium max-w-[150px] truncate">{customer.name}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-gray-700 whitespace-nowrap">{customer.phone || '-'}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-gray-700 max-w-[200px] truncate">{customer.address || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Billing History Report */}
-      {activeTab === 'billing' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Billing History Report</h2>
-            <Button onClick={downloadBillingReport} variant="primary" className="flex items-center gap-2 w-full sm:w-auto">
-              <Download size={18} />
-              <span>Download PDF</span>
-            </Button>
-          </div>
-
-          {invoices.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <p>No billing history available</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto table-responsive">
-              <table className="w-full text-xs sm:text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Invoice No</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Date</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Customer</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-semibold text-gray-700 whitespace-nowrap">Items</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-semibold text-gray-700 whitespace-nowrap">Total Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map((invoice, index) => (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-gray-900 font-medium max-w-[120px] truncate">{invoice.invoiceNumber}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-gray-700 whitespace-nowrap">{new Date(invoice.createdAt).toLocaleDateString()}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-gray-700 max-w-[150px] truncate">{invoice.customer?.name || 'Walk-in Customer'}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-right text-gray-700 whitespace-nowrap">{invoice.items.length}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-green-600 whitespace-nowrap">₹{invoice.grandTotal.toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Credit / Udhaar Report */}
-      {activeTab === 'credit' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
-          <div className="mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">💸 Credit / Udhaar Report</h2>
-            <p className="text-xs sm:text-sm text-gray-600">Track all pending payments and unpaid invoices</p>
-          </div>
-
-          {/* Summary Cards - Stack on mobile */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="bg-red-50 border-2 border-red-200 p-3 sm:p-4 rounded-lg">
-              <p className="text-xs sm:text-sm text-red-700 font-semibold mb-1">Total Pending Amount</p>
-              <p className="text-2xl sm:text-3xl font-bold text-red-800 break-words">₹{totalCredit.toLocaleString()}</p>
-            </div>
-            <div className="bg-orange-50 border-2 border-orange-200 p-3 sm:p-4 rounded-lg">
-              <p className="text-xs sm:text-sm text-orange-700 font-semibold mb-1">Pending Invoices</p>
-              <p className="text-2xl sm:text-3xl font-bold text-orange-800">{pendingCount}</p>
-            </div>
-            <div className="bg-blue-50 border-2 border-blue-200 p-3 sm:p-4 rounded-lg">
-              <p className="text-xs sm:text-sm text-blue-700 font-semibold mb-1">Paid Invoices</p>
-              <p className="text-2xl sm:text-3xl font-bold text-blue-800">{invoices.length - pendingCount}</p>
-            </div>
-          </div>
-
-          {/* Customer-wise Credit Summary */}
-          <div className="mb-4 sm:mb-6">
-            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3">👥 Customer-wise Pending Balance</h3>
-            <div className="overflow-x-auto table-responsive">
-              <table className="w-full text-xs sm:text-sm">
-                <thead className="bg-purple-50 border-b-2 border-purple-200">
-                  <tr>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-bold text-purple-800 whitespace-nowrap">Customer Name</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-bold text-purple-800 whitespace-nowrap">Phone</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-purple-800 whitespace-nowrap">Total Credit (Udhaar)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customers.map((customer, index) => {
-                    const customerCredit = getCustomerCredit(customer.id);
-                    if (customerCredit === 0) return null;
-                    
-                    return (
-                      <tr key={index} className="border-b border-purple-100">
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-purple-900 font-medium max-w-[150px] truncate">{customer.name}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-purple-700 whitespace-nowrap">{customer.phone || '-'}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-red-600 whitespace-nowrap">₹{customerCredit.toLocaleString()}</td>
+          <Card>
+            <CardHeader
+              title="Profit per bill"
+              subtitle="Sale − purchase cost − bill discount"
+              actions={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={<Download size={14} />}
+                  onClick={() =>
+                    buildPdf(
+                      'Profit Report',
+                      [['Invoice', 'Date', 'Customer', 'Sale', 'Profit']],
+                      invoices.map(inv => [
+                        inv.invoiceNumber,
+                        formatDate(inv.createdAt),
+                        inv.customer?.name || 'Walk-in',
+                        formatINR(inv.grandTotal),
+                        formatINR(calculateInvoiceGrossProfit(inv, products)),
+                      ]),
+                      `profit-report-${new Date().toISOString().split('T')[0]}.pdf`
+                    )
+                  }
+                >
+                  Download PDF
+                </Button>
+              }
+            />
+            <CardBody>
+              {invoices.length === 0 ? (
+                <EmptyState title="No sales yet" />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Invoice</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Date</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Customer</th>
+                        <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Sale</th>
+                        <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Profit</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {customers.filter(c => getCustomerCredit(c.id) > 0).length === 0 && (
-                <div className="text-center py-4 text-green-600 text-xs sm:text-sm">
-                  ✅ No customers have pending credit
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {[...invoices].reverse().slice(0, 100).map(inv => {
+                        const profit = calculateInvoiceGrossProfit(inv, products);
+                        return (
+                          <tr key={inv.id} className="hover:bg-slate-50">
+                            <td className="px-3 py-2.5 text-sm font-medium text-slate-900">{inv.invoiceNumber}</td>
+                            <td className="px-3 py-2.5 text-sm text-slate-600">{formatDate(inv.createdAt)}</td>
+                            <td className="px-3 py-2.5 text-sm text-slate-700">{inv.customer?.name || 'Walk-in'}</td>
+                            <td className="px-3 py-2.5 text-right text-sm text-slate-900 num-display">{formatINR(inv.grandTotal)}</td>
+                            <td className={`px-3 py-2.5 text-right text-sm font-semibold num-display ${profit >= 0 ? 'text-success-700' : 'text-danger-700'}`}>
+                              {formatINR(profit)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
-            </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
+
+      {/* CREDIT */}
+      {tab === 'credit' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <StatCard label="Total Pending" value={formatINR(totalOutstanding)} icon={AlertTriangle} tone="danger" />
+            <StatCard label="Unpaid Bills" value={pendingInvoices.length} tone="warning" />
+            <StatCard label="Paid Bills" value={invoices.length - pendingInvoices.length} tone="success" />
           </div>
 
-          {/* Unpaid Invoices Table */}
-          <div>
-            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3">📋 All Unpaid Invoices</h3>
-            <div className="overflow-x-auto table-responsive">
-              <table className="w-full text-xs sm:text-sm">
-                <thead className="bg-red-50 border-b-2 border-red-200">
-                  <tr>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-bold text-red-800 whitespace-nowrap">Invoice No</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-bold text-red-800 whitespace-nowrap">Date</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-bold text-red-800 whitespace-nowrap">Customer</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-red-800 whitespace-nowrap">Bill Amount</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-red-800 whitespace-nowrap">Credit (Udhaar)</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-red-800 whitespace-nowrap">Paid Amount</th>
-                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-center font-bold text-red-800 whitespace-nowrap">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.filter(inv => inv.isCredit || (inv.paymentStatus && inv.paymentStatus !== 'paid')).map((invoice, index) => {
-                    const isPartial = invoice.paymentStatus === 'partial_credit';
-                    const creditAmt = isPartial ? (invoice.creditAmount || 0) : invoice.grandTotal;
-                    const paidAmt = isPartial ? (invoice.grandTotal - creditAmt) : 0;
-                    
-                    return (
-                      <tr key={index} className="border-b border-red-100">
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-red-900 font-semibold max-w-[120px] truncate">{invoice.invoiceNumber}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-red-700 whitespace-nowrap">{new Date(invoice.createdAt).toLocaleDateString()}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-red-700 max-w-[150px] truncate">{invoice.customer?.name || 'Walk-in Customer'}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-right text-gray-700 whitespace-nowrap">₹{invoice.grandTotal.toLocaleString()}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-red-600 whitespace-nowrap">₹{creditAmt.toLocaleString()}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-green-600 whitespace-nowrap">₹{paidAmt.toLocaleString()}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
-                          <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
-                            isPartial 
-                              ? 'bg-yellow-100 text-yellow-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {isPartial ? '⚠️ Partial' : '💸 Full Credit'}
-                          </span>
+          <Card>
+            <CardHeader title="Unpaid invoices" />
+            <CardBody>
+              {pendingInvoices.length === 0 ? (
+                <EmptyState
+                  title="All clear"
+                  description="No outstanding payments. Well done!"
+                />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Invoice</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Date</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Customer</th>
+                        <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Bill</th>
+                        <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Outstanding</th>
+                        <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Status</th>
+                        <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {pendingInvoices.map(inv => {
+                        const outstanding = getInvoiceOutstanding(inv);
+                        return (
+                          <tr key={inv.id} className="hover:bg-slate-50">
+                            <td className="px-3 py-2.5 text-sm font-medium text-slate-900">{inv.invoiceNumber}</td>
+                            <td className="px-3 py-2.5 text-sm text-slate-600">{formatDate(inv.createdAt)}</td>
+                            <td className="px-3 py-2.5 text-sm text-slate-700">{inv.customer?.name || 'Walk-in'}</td>
+                            <td className="px-3 py-2.5 text-right text-sm text-slate-900 num-display">{formatINR(inv.grandTotal)}</td>
+                            <td className="px-3 py-2.5 text-right text-sm font-bold text-danger-700 num-display">{formatINR(outstanding)}</td>
+                            <td className="px-3 py-2.5 text-right">
+                              <Badge variant={inv.paymentStatus === 'partial_credit' ? 'warning' : 'danger'}>
+                                {inv.paymentStatus === 'partial_credit' ? 'Partial' : 'Credit'}
+                              </Badge>
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              {inv.customer?.phone && (
+                                <Button
+                                  size="xs"
+                                  variant="ghost"
+                                  icon={<MessageCircle size={14} />}
+                                  onClick={() =>
+                                    openWhatsApp({
+                                      phone: inv.customer.phone,
+                                      message:
+                                        `Hi ${inv.customer.name}, this is a friendly reminder of pending payment of ` +
+                                        `${formatINR(outstanding)} against invoice ${inv.invoiceNumber} from ${settings.companyName}. ` +
+                                        `Please clear at your earliest. Thank you!`,
+                                    })
+                                  }
+                                >
+                                  Remind
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </div>
+      )}
+
+      {/* BILLING */}
+      {tab === 'billing' && (
+        <Card>
+          <CardHeader
+            title="All sales"
+            subtitle={`${invoices.length} bill${invoices.length === 1 ? '' : 's'}`}
+            actions={
+              <Button
+                size="sm"
+                variant="outline"
+                icon={<Download size={14} />}
+                onClick={() =>
+                  buildPdf(
+                    'Sales Report',
+                    [['Invoice', 'Date', 'Customer', 'Items', 'Total']],
+                    invoices.map(inv => [
+                      inv.invoiceNumber,
+                      formatDate(inv.createdAt),
+                      inv.customer?.name || 'Walk-in',
+                      (inv.items || []).length,
+                      formatINR(inv.grandTotal),
+                    ]),
+                    `sales-report-${new Date().toISOString().split('T')[0]}.pdf`
+                  )
+                }
+              >
+                Download PDF
+              </Button>
+            }
+          />
+          <CardBody>
+            {invoices.length === 0 ? (
+              <EmptyState title="No sales yet" />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Invoice</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Date</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Customer</th>
+                      <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Items</th>
+                      <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {[...invoices].reverse().map(inv => (
+                      <tr key={inv.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2.5 text-sm font-medium text-slate-900">{inv.invoiceNumber}</td>
+                        <td className="px-3 py-2.5 text-sm text-slate-600">{formatDate(inv.createdAt)}</td>
+                        <td className="px-3 py-2.5 text-sm text-slate-700">{inv.customer?.name || 'Walk-in'}</td>
+                        <td className="px-3 py-2.5 text-right text-sm text-slate-700">{(inv.items || []).length}</td>
+                        <td className="px-3 py-2.5 text-right text-sm font-semibold text-slate-900 num-display">{formatINR(inv.grandTotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      )}
+
+      {/* STOCK */}
+      {tab === 'stock' && (
+        <Card>
+          <CardHeader
+            title="Stock report"
+            actions={
+              <Button
+                size="sm"
+                variant="outline"
+                icon={<Download size={14} />}
+                onClick={() =>
+                  buildPdf(
+                    'Stock Report',
+                    [['Product', 'Category', 'Purchase', 'Selling', 'Stock', 'Value']],
+                    products.map(p => [
+                      p.name,
+                      p.category,
+                      formatINR(p.purchasePrice),
+                      formatINR(p.sellingPrice),
+                      p.quantity,
+                      formatINR((p.sellingPrice || 0) * (p.quantity || 0)),
+                    ]),
+                    `stock-report-${new Date().toISOString().split('T')[0]}.pdf`
+                  )
+                }
+              >
+                Download PDF
+              </Button>
+            }
+          />
+          <CardBody>
+            {products.length === 0 ? (
+              <EmptyState title="No products in stock" />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Product</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Category</th>
+                      <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Cost</th>
+                      <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Price</th>
+                      <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Stock</th>
+                      <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {products.map(p => (
+                      <tr key={p.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2.5 text-sm font-medium text-slate-900">{p.name}</td>
+                        <td className="px-3 py-2.5 text-sm text-slate-700">{p.category}</td>
+                        <td className="px-3 py-2.5 text-right text-sm text-slate-700 num-display">{formatINR(p.purchasePrice)}</td>
+                        <td className="px-3 py-2.5 text-right text-sm text-slate-900 num-display">{formatINR(p.sellingPrice)}</td>
+                        <td className={`px-3 py-2.5 text-right text-sm ${p.quantity <= 5 ? 'text-danger-700 font-semibold' : 'text-slate-700'}`}>{p.quantity}</td>
+                        <td className="px-3 py-2.5 text-right text-sm font-semibold text-slate-900 num-display">
+                          {formatINR((p.sellingPrice || 0) * (p.quantity || 0))}
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {invoices.filter(inv => inv.isCredit || (inv.paymentStatus && inv.paymentStatus !== 'paid')).length === 0 && (
-                <div className="text-center py-8 text-green-600 text-xs sm:text-sm">
-                  ✅ No pending payments! All clear.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardBody>
+        </Card>
       )}
 
-      {/* Profit Report */}
-      {activeTab === 'profit' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
-          <div className="mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">📊 Profit Report</h2>
-            <p className="text-xs sm:text-sm text-gray-600">Track your business profitability</p>
-          </div>
-
-          {/* Summary Cards - Stack on mobile */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="bg-green-50 border-2 border-green-200 p-3 sm:p-4 rounded-lg">
-              <p className="text-xs sm:text-sm text-green-700 font-semibold mb-1">Today's Profit</p>
-              <p className="text-2xl sm:text-3xl font-bold text-green-800 break-words">₹{todayProfit.toLocaleString()}</p>
-            </div>
-            <div className="bg-blue-50 border-2 border-blue-200 p-3 sm:p-4 rounded-lg">
-              <p className="text-xs sm:text-sm text-blue-700 font-semibold mb-1">Total Profit</p>
-              <p className="text-2xl sm:text-3xl font-bold text-blue-800 break-words">₹{totalProfit.toLocaleString()}</p>
-            </div>
-            <div className="bg-purple-50 border-2 border-purple-200 p-3 sm:p-4 rounded-lg">
-              <p className="text-xs sm:text-sm text-purple-700 font-semibold mb-1">Total Sales</p>
-              <p className="text-2xl sm:text-3xl font-bold text-purple-800 break-words">₹{invoices.reduce((sum, inv) => sum + inv.grandTotal, 0).toLocaleString()}</p>
-            </div>
-          </div>
-
-          {/* Profit by Product */}
-          <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3">Top Profit Products</h3>
-          <div className="overflow-x-auto table-responsive">
-            <table className="w-full text-xs sm:text-sm">
-              <thead className="bg-green-50 border-b-2 border-green-200">
-                <tr>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-bold text-green-800 whitespace-nowrap">Product Name</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-green-800 whitespace-nowrap">Purchase Price</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-green-800 whitespace-nowrap">Selling Price</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-green-800 whitespace-nowrap">Profit/Unit</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-green-800 whitespace-nowrap">Stock</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product, index) => {
-                  const profitPerUnit = (product.sellingPrice || 0) - (product.purchasePrice || 0);
-                  return (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-gray-900 font-medium max-w-[150px] truncate">{product.name}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-right text-gray-700 whitespace-nowrap">₹{product.purchasePrice?.toLocaleString()}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-right text-gray-900 font-semibold whitespace-nowrap">₹{product.sellingPrice?.toLocaleString()}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-green-600 whitespace-nowrap">+₹{profitPerUnit.toLocaleString()}</td>
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-right whitespace-nowrap">{product.quantity}</td>
+      {/* CUSTOMERS */}
+      {tab === 'customers' && (
+        <Card>
+          <CardHeader
+            title="Customer report"
+            actions={
+              <Button
+                size="sm"
+                variant="outline"
+                icon={<Download size={14} />}
+                onClick={() =>
+                  buildPdf(
+                    'Customer Report',
+                    [['Name', 'Phone', 'Total Spent', 'Outstanding']],
+                    customers.map(c => {
+                      const outstanding = invoices
+                        .filter(inv => inv.customer?.id === c.id)
+                        .reduce((s, inv) => s + getInvoiceOutstanding(inv), 0);
+                      return [
+                        c.name,
+                        c.phone || '-',
+                        formatINR(c.totalSpent || 0),
+                        formatINR(outstanding),
+                      ];
+                    }),
+                    `customer-report-${new Date().toISOString().split('T')[0]}.pdf`
+                  )
+                }
+              >
+                Download PDF
+              </Button>
+            }
+          />
+          <CardBody>
+            {customers.length === 0 ? (
+              <EmptyState title="No customers yet" />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Name</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Phone</th>
+                      <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Total Spent</th>
+                      <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Outstanding</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {customers.map(c => {
+                      const outstanding = invoices
+                        .filter(inv => inv.customer?.id === c.id)
+                        .reduce((s, inv) => s + getInvoiceOutstanding(inv), 0);
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-50">
+                          <td className="px-3 py-2.5 text-sm font-medium text-slate-900">{c.name}</td>
+                          <td className="px-3 py-2.5 text-sm text-slate-600">{c.phone || '—'}</td>
+                          <td className="px-3 py-2.5 text-right text-sm text-slate-900 num-display">{formatINR(c.totalSpent || 0)}</td>
+                          <td className={`px-3 py-2.5 text-right text-sm font-semibold num-display ${outstanding > 0 ? 'text-danger-700' : 'text-slate-400'}`}>
+                            {outstanding > 0 ? formatINR(outstanding) : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardBody>
+        </Card>
       )}
     </div>
   );

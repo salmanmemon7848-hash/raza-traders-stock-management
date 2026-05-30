@@ -1,87 +1,58 @@
 import React, { useState } from 'react';
-import { useAppContext } from '../../contexts/AppContext';
-import Button from '../common/Button';
 import Input from '../common/Input';
-import Modal from '../common/Modal';
-import Table from '../common/Table';
-import { Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
-import { validateCustomer } from '../../utils/calculations';
+import Button from '../common/Button';
 
 const CustomerForm = ({ customer, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     name: customer?.name || '',
     phone: customer?.phone || '',
-    address: customer?.address || ''
+    address: customer?.address || '',
   });
-  
   const [errors, setErrors] = useState({});
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+  const onChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+    setErrors(p => ({ ...p, [e.target.name]: '' }));
   };
 
-  const handleSubmit = (e) => {
+  const submit = (e) => {
     e.preventDefault();
-    
-    const validation = validateCustomer(formData);
-    if (!validation.isValid) {
-      setErrors(validation.errors.reduce((acc, error) => ({ ...acc, [error.split(' ')[0]]: error }), {}));
+    if (!form.name.trim()) {
+      setErrors({ name: 'Required' });
       return;
     }
-
-    onSave({
-      ...customer,
-      ...formData
-    });
-  };
-
-  const handleClear = () => {
-    setFormData({ name: '', phone: '', address: '' });
-    setErrors({});
+    onSave({ ...(customer || {}), name: form.name.trim(), phone: form.phone.trim(), address: form.address.trim() });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={submit} className="space-y-4">
       <Input
-        label="Customer Name"
+        label="Name"
         name="name"
-        value={formData.name}
-        onChange={handleChange}
-        error={errors.name}
         required
-        placeholder="Enter customer name"
+        value={form.name}
+        onChange={onChange}
+        error={errors.name}
+        placeholder="Customer's full name"
       />
-
       <Input
-        label="Phone Number"
+        label="Phone (WhatsApp)"
         name="phone"
-        value={formData.phone}
-        onChange={handleChange}
-        placeholder="Enter phone number"
+        value={form.phone}
+        onChange={onChange}
+        prefix="+91"
+        placeholder="10-digit mobile number"
       />
-
       <Input
         label="Address"
         name="address"
-        value={formData.address}
-        onChange={handleChange}
-        placeholder="Enter address"
+        value={form.address}
+        onChange={onChange}
+        placeholder="Street, City"
       />
-
-      <div className="flex space-x-3 pt-4">
-        <Button type="submit" variant="primary" className="flex-1">
-          {customer ? 'Update Customer' : 'Add Customer'}
-        </Button>
-        <Button type="button" variant="secondary" onClick={handleClear}>
-          Clear
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
+        <Button variant="primary" type="submit">{customer ? 'Update' : 'Add customer'}</Button>
       </div>
     </form>
   );

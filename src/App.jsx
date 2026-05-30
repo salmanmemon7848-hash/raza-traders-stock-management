@@ -8,8 +8,20 @@ import CustomerManagement from './components/customers/CustomerManagement';
 import ExpenseManagement from './components/expenses/ExpenseManagement';
 import Settings from './components/settings/Settings';
 import Reports from './components/reports/Reports';
+import ProductRequests from './components/requests/ProductRequests';
 import Notifications from './components/common/Notifications';
 import { AppProvider } from './contexts/AppContext';
+
+const PAGE_TITLES = {
+  dashboard: 'Dashboard',
+  stock: 'Stock',
+  billing: 'New Bill',
+  customers: 'Customers',
+  requests: 'Product Requests',
+  expenses: 'Expenses',
+  reports: 'Reports',
+  settings: 'Settings',
+};
 
 const AppContent = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -17,59 +29,40 @@ const AppContent = () => {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'stock':
-        return <StockManagement />;
-      case 'billing':
-        return <BillingSystem />;
-      case 'customers':
-        return <CustomerManagement />;
-      case 'expenses':
-        return <ExpenseManagement />;
-      case 'reports':
-        return <Reports />;
-      case 'settings':
-        return <Settings />;
-      default:
-        return <Dashboard />;
+      case 'dashboard': return <Dashboard onNavigate={setCurrentPage} />;
+      case 'stock':     return <StockManagement />;
+      case 'billing':   return <BillingSystem />;
+      case 'customers': return <CustomerManagement />;
+      case 'requests':  return <ProductRequests />;
+      case 'expenses':  return <ExpenseManagement />;
+      case 'reports':   return <Reports />;
+      case 'settings':  return <Settings />;
+      default:          return <Dashboard onNavigate={setCurrentPage} />;
     }
   };
 
-  const getPageTitle = () => {
-    const titles = {
-      dashboard: 'Dashboard',
-      stock: 'Stock Management',
-      billing: 'Billing System',
-      customers: 'Customers',
-      expenses: 'Expenses',
-      reports: 'Reports',
-      settings: 'Settings'
-    };
-    return titles[currentPage] || 'Raza Traders';
-  };
-
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar 
+    <div className="flex min-h-screen bg-slate-50">
+      <Sidebar
         currentPage={currentPage}
         onNavigate={setCurrentPage}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header 
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header
           onMenuClick={() => setSidebarOpen(true)}
-          title={getPageTitle()}
+          title={PAGE_TITLES[currentPage] || 'Raza Traders'}
+          onQuickAction={
+            currentPage !== 'billing' ? () => setCurrentPage('billing') : undefined
+          }
         />
-        
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {renderPage()}
         </main>
       </div>
 
-      {/* Toast Notifications */}
       <Notifications />
     </div>
   );

@@ -1,74 +1,67 @@
 import { useAppContext } from '../contexts/AppContext';
 
+const escape = (val) => {
+  if (val === null || val === undefined) return '';
+  const s = String(val).replace(/"/g, '""');
+  return /[",\n]/.test(s) ? `"${s}"` : s;
+};
+
+const downloadCSV = (rows, filename) => {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(','), ...rows.map(r => headers.map(h => escape(r[h])).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}.csv`;
+  link.click();
+};
+
 export const useExport = () => {
   const { products, customers, invoices } = useAppContext();
 
-  const exportToCSV = (data, filename) => {
-    try {
-      if (!data || data.length === 0) {
-        return { success: false, error: 'No data to export' };
-      }
-
-      const headers = Object.keys(data[0]);
-      const csvContent = [
-        headers.join(','),
-        ...data.map(row => 
-          headers.map(header => 
-            JSON.stringify(row[header] || '')
-          ).join(',')
-        )
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${filename}.csv`;
-      link.click();
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error exporting to CSV:', error);
-      return { success: false, error: error.message };
-    }
-  };
-
   const exportProductsCSV = () => {
-    const formattedData = products.map(product => ({
-      Name: product.name,
-      Category: product.category,
-      Price: product.price,
-      Quantity: product.quantity,
-      Model_Number: product.modelNumber || '',
-      Created_At: new Date(product.createdAt).toLocaleDateString()
-    }));
-    return exportToCSV(formattedData, 'products');
+    downloadCSV(
+      products.map(p => ({
+        Name: p.name,
+        Category: p.category,
+        Model: p.modelNumber || '',
+        PurchasePrice: p.purchasePrice || 0,
+        SellingPrice: p.sellingPrice || 0,
+        Stock: p.quantity || 0,
+      })),
+      `products-${new Date().toISOString().split('T')[0]}`
+    );
   };
 
   const exportCustomersCSV = () => {
-    const formattedData = customers.map(customer => ({
-      Name: customer.name,
-      Phone: customer.phone || '',
-      Address: customer.address || '',
-      Total_Spent: customer.totalSpent,
-      Created_At: new Date(customer.createdAt).toLocaleDateString()
-    }));
-    return exportToCSV(formattedData, 'customers');
+    downloadCSV(
+      customers.map(c => ({
+        Name: c.name,
+        Phone: c.phone || '',
+        Address: c.address || '',
+        TotalSpent: c.totalSpent || 0,
+      })),
+      `customers-${new Date().toISOString().split('T')[0]}`
+    );
   };
 
   const exportInvoicesCSV = () => {
-    const formattedData = invoices.map(invoice => ({
-      Invoice_Number: invoice.invoiceNumber,
-      Customer: invoice.customer?.name || '',
-      Total_Amount: invoice.grandTotal,
-      Date: new Date(invoice.createdAt).toLocaleDateString()
-    }));
-    return exportToCSV(formattedData, 'invoices');
+    downloadCSV(
+      invoices.map(i => ({
+        Invoice: i.invoiceNumber,
+        Date: new Date(i.createdAt).toLocaleDateString('en-IN'),
+        Customer: i.customer?.name || 'Walk-in',
+        Items: (i.items || []).length,
+        Subtotal: i.subtotal,
+        Discount: i.discount,
+        Tax: i.taxAmount,
+        Total: i.grandTotal,
+        Status: i.paymentStatus || 'paid',
+      })),
+      `invoices-${new Date().toISOString().split('T')[0]}`
+    );
   };
 
-  return {
-    exportToCSV,
-    exportProductsCSV,
-    exportCustomersCSV,
-    exportInvoicesCSV
-  };
+  return { exportProductsCSV, exportCustomersCSV, exportInvoicesCSV };
 };

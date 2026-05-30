@@ -1,210 +1,147 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../../contexts/AppContext';
+import { Plus, Wallet } from 'lucide-react';
 import Button from '../common/Button';
 import Input from '../common/Input';
+import Select from '../common/Select';
 import Modal from '../common/Modal';
-import { Plus, X } from 'lucide-react';
+import { formatINR, getInvoiceOutstanding } from '../../utils/calculations';
+
+const today = () => new Date().toISOString().split('T')[0];
 
 const ReceivedPaymentForm = () => {
   const { customers, invoices, dispatch, success, error } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     customerId: '',
     customerName: '',
     invoiceId: '',
     amount: '',
-    date: new Date().toISOString().split('T')[0],
-    notes: ''
+    date: today(),
+    notes: '',
   });
 
-  // Get customer's unpaid invoices
-  const getCustomerCreditInvoices = (customerId) => {
-    return invoices.filter(inv => 
-      inv.customer?.id === customerId && 
-      (inv.isCredit || inv.paymentStatus === 'unpaid' || inv.paymentStatus === 'partial_credit')
-    );
+  const openInvoicesForCustomer = useMemo(() => {
+    if (!form.customerId) return [];
+    return invoices.filter(inv => inv.customer?.id === form.customerId && getInvoiceOutstanding(inv) > 0);
+  }, [form.customerId, invoices]);
+
+  const onChangeCustomer = (id) => {
+    const c = customers.find(c => c.id === id);
+    setForm({ ...form, customerId: id, customerName: c?.name || '', invoiceId: '' });
   };
 
-  const handleSubmit = (e) => {
+  const submit = (e) => {
     e.preventDefault();
-
-    if (!formData.customerId && !formData.customerName.trim()) {
-      error('Please select a customer or enter customer name');
+    if (!form.customerName.trim() && !form.customerId) {
+      error('Please pick or enter a customer name');
       return;
     }
-
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      error('Please enter a valid amount');
+    if (!form.amount || parseFloat(form.amount) <= 0) {
+      error('Enter a valid amount');
       return;
     }
-
-    const paymentData = {
-      customerId: formData.customerId || null,
-      customerName: formData.customerName || formData.customerId,
-      invoiceId: formData.invoiceId || null,
-      amount: parseFloat(formData.amount),
-      date: formData.date,
-      notes: formData.notes,
-      type: 'received'
-    };
-
-    dispatch({ type: 'ADD_PAYMENT', payload: paymentData });
-    success('✅ Payment received successfully!');
-
-    // Reset form
-    setFormData({
-      customerId: '',
-      customerName: '',
-      invoiceId: '',
-      amount: '',
-      date: new Date().toISOString().split('T')[0],
-      notes: ''
+    dispatch({
+      type: 'ADD_PAYMENT',
+      payload: {
+        customerId: form.customerId || null,
+        customerName: form.customerName,
+        invoiceId: form.invoiceId || null,
+        amount: parseFloat(form.amount),
+        date: form.date,
+        notes: form.notes,
+        type: 'received',
+      },
     });
+    success('Payment recorded');
     setIsOpen(false);
+    setForm({ customerId: '', customerName: '', invoiceId: '', amount: '', date: today(), notes: '' });
   };
-
-  const handleCustomerChange = (customerId) => {
-    const customer = customers.find(c => c.id === customerId);
-    setFormData({
-      ...formData,
-      customerId,
-      customerName: customer ? customer.name : '',
-      invoiceId: '' // Reset invoice when customer changes
-    });
-  };
-
-  const selectedCustomerInvoices = formData.customerId 
-    ? getCustomerCreditInvoices(formData.customerId) 
-    : [];
 
   return (
     <>
-      {/* Open Modal Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors touch-target"
-      >
-        <Plus size={18} />
-        <span>Receive Payment</span>
-      </button>
+      <Button icon={<Plus size={16} />} variant="success" onClick={() => setIsOpen(true)}>
+        Receive Payment
+      </Button>
 
-      {/* Modal */}
       <Modal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        title="Receive Payment"
+        title="Record received payment"
+        subtitle="Track cash inflows and link them to open dues"
         size="md"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Customer Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Customer <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={formData.customerId}
-              onChange={(e) => handleCustomerChange(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-            >
-              <option value="">Select Customer (Optional)</option>
-              {customers.map(customer => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name} {customer.phone ? `(${customer.phone})` : ''}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">Or enter name manually below</p>
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button variant="success" icon={<Wallet size={16} />} onClick={submit}>Save payment</Button>
           </div>
+        }
+      >
+        <form onSubmit={submit} className="space-y-4">
+          <Select
+            label="Customer"
+            value={form.customerId}
+            onChange={(e) => onChangeCustomer(e.target.value)}
+          >
+            <option value="">— Walk-in / Manual entry —</option>
+            {customers.map(c => (
+              <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ''}</option>
+            ))}
+          </Select>
 
-          {/* Manual Customer Name */}
-          {!formData.customerId && (
+          {!form.customerId && (
             <Input
-              label="Customer Name"
-              type="text"
-              value={formData.customerName}
-              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-              placeholder="Enter customer name"
+              label="Customer name"
+              value={form.customerName}
+              onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+              placeholder="Enter name"
               required
             />
           )}
 
-          {/* Credit Invoice Selection */}
-          {formData.customerId && selectedCustomerInvoices.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Link to Credit Invoice (Optional)
-              </label>
-              <select
-                value={formData.invoiceId}
-                onChange={(e) => setFormData({ ...formData, invoiceId: e.target.value })}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              >
-                <option value="">Direct Payment (No Invoice Link)</option>
-                {selectedCustomerInvoices.map(invoice => (
-                  <option key={invoice.id} value={invoice.id}>
-                    Invoice #{invoice.invoiceNumber} - Remaining: ₹{(invoice.creditAmount || 0).toLocaleString()}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Payment will automatically reduce the credit balance
-              </p>
-            </div>
+          {openInvoicesForCustomer.length > 0 && (
+            <Select
+              label="Apply to invoice"
+              hint="Reduces the outstanding amount on the chosen invoice"
+              value={form.invoiceId}
+              onChange={(e) => setForm({ ...form, invoiceId: e.target.value })}
+            >
+              <option value="">Direct payment (not linked)</option>
+              {openInvoicesForCustomer.map(inv => (
+                <option key={inv.id} value={inv.id}>
+                  {inv.invoiceNumber} — Outstanding {formatINR(getInvoiceOutstanding(inv))}
+                </option>
+              ))}
+            </Select>
           )}
 
-          {/* Amount */}
-          <Input
-            label="Received Amount"
-            type="number"
-            value={formData.amount}
-            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-            placeholder="Enter amount"
-            min="0"
-            step="0.01"
-            required
-          />
-
-          {/* Date */}
-          <Input
-            label="Payment Date"
-            type="date"
-            value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            required
-          />
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (Optional)
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Add any notes about this payment..."
-              rows="3"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Amount"
+              type="number"
+              required
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              prefix="₹"
+              placeholder="0"
+            />
+            <Input
+              label="Date"
+              type="date"
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
             />
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsOpen(false)}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              className="flex-1"
-            >
-              <Plus size={18} className="inline mr-1" />
-              Receive Payment
-            </Button>
+          <div>
+            <label className="form-label">Notes (optional)</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              rows={2}
+              className="pretty-input resize-none"
+              placeholder="e.g. UPI transaction id, cheque #"
+            />
           </div>
         </form>
       </Modal>

@@ -1,48 +1,37 @@
 import React from 'react';
-import { Bell, Menu } from 'lucide-react';
+import { Menu, Plus } from 'lucide-react';
 import SyncStatus from '../common/SyncStatus';
+import Button from '../common/Button';
 
-const Header = ({ onMenuClick, title }) => {
+const Header = ({ onMenuClick, title, onQuickAction, quickActionLabel = 'New Bill' }) => {
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
-      <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 py-3 sm:py-4">
-        <div className="flex items-center flex-1 min-w-0">
-          {/* Mobile Menu Button - Larger touch target */}
+    <header className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-200">
+      <div className="flex items-center justify-between gap-3 px-3 sm:px-5 h-16">
+        <div className="flex items-center min-w-0 gap-2">
           <button
             onClick={onMenuClick}
-            className="lg:hidden mr-3 sm:mr-4 text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors touch-target-large"
+            className="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
             aria-label="Open menu"
           >
-            <Menu size={24} />
+            <Menu size={22} />
           </button>
-          
-          {/* Page Title - Responsive sizing */}
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 truncate">{title}</h1>
+          <h1 className="text-base sm:text-lg font-semibold text-slate-900 truncate">
+            {title}
+          </h1>
         </div>
-        
-        <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
-          {/* Sync Status Indicator */}
+
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <SyncStatus />
-          
-          {/* Notifications - Better mobile sizing */}
-          <button 
-            className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100 touch-target-large"
-            aria-label="Notifications"
-          >
-            <Bell size={20} className="sm:size-6" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
-          
-          {/* User Profile - Hide on small mobile, show on larger screens */}
-          <div className="hidden sm:flex items-center space-x-2 md:space-x-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-sm sm:text-base">
-              A
-            </div>
-            <div className="hidden md:block">
-              <p className="text-xs sm:text-sm font-semibold text-gray-900">Admin</p>
-              <p className="text-xs text-gray-500">Administrator</p>
-            </div>
-          </div>
+          {onQuickAction && (
+            <Button
+              size="sm"
+              onClick={onQuickAction}
+              icon={<Plus size={16} />}
+              className="hidden sm:inline-flex"
+            >
+              {quickActionLabel}
+            </Button>
+          )}
         </div>
       </div>
     </header>

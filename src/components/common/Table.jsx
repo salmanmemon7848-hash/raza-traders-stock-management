@@ -1,128 +1,64 @@
 import React from 'react';
+import EmptyState from './EmptyState';
 
-const Table = ({ columns, data, onRowClick, className = '', enableCardView = false }) => {
+const Table = ({
+  columns,
+  data,
+  onRowClick,
+  className = '',
+  emptyTitle = 'No data',
+  emptyDescription,
+  emptyIcon,
+  emptyAction,
+  // For mobile card view: render each row as a card via renderCard(row)
+  renderCard,
+}) => {
+  const isEmpty = !data || data.length === 0;
+
   return (
     <>
-      {/* Desktop Table View */}
-      <div className={`overflow-x-auto ${className} hidden md:block`}>
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              {columns.map((column, index) => (
-                <th
-                  key={index}
-                  className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap"
-                >
-                  {column.header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {data.length === 0 ? (
-              <tr>
-                <td 
-                  colSpan={columns.length} 
-                  className="px-6 py-8 text-center text-gray-500 text-sm"
-                >
-                  No data available
-                </td>
-              </tr>
-            ) : (
-              data.map((row, rowIndex) => (
-                <tr
-                  key={rowIndex}
-                  onClick={() => onRowClick && onRowClick(row)}
-                  className={`${onRowClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
-                >
-                  {columns.map((column, colIndex) => (
-                    <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {column.render ? column.render(row) : row[column.accessor]}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile Card View */}
-      {enableCardView && (
-        <div className={`md:hidden space-y-3 ${className}`}>
-          {data.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 text-sm">
-              No data available
-            </div>
-          ) : (
-            data.map((row, rowIndex) => (
-              <div
-                key={rowIndex}
-                onClick={() => onRowClick && onRowClick(row)}
-                className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${
-                  onRowClick ? 'cursor-pointer hover:bg-gray-50' : ''
-                }`}
-              >
-                {columns.map((column, colIndex) => {
-                  const value = column.render ? column.render(row) : row[column.accessor];
-                  // Don't render action buttons in card view if they're already shown elsewhere
-                  if (column.header === 'Actions') return null;
-                  
-                  return (
-                    <div key={colIndex} className="flex justify-between items-center py-2 border-b last:border-0 border-gray-100">
-                      <span className="text-xs font-semibold text-gray-600 uppercase">{column.header}</span>
-                      <span className="text-sm text-gray-900 text-right">{value}</span>
-                    </div>
-                  );
-                })}
-                
-                {/* Show actions separately in card view */}
-                {columns.find(col => col.header === 'Actions') && (
-                  <div className="mt-3 pt-3 border-t border-gray-200 flex gap-2">
-                    {columns.find(col => col.header === 'Actions').render?.(row)}
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Fallback when card view is disabled - show simple responsive table */}
-      {!enableCardView && (
-        <div className={`overflow-x-auto md:hidden ${className} table-responsive`}>
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                {columns.map((column, index) => (
+      {/* Desktop table */}
+      <div className={`hidden md:block ${className}`}>
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-slate-200">
+                {columns.map((column, i) => (
                   <th
-                    key={index}
-                    className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap"
+                    key={i}
+                    className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap
+                      ${column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left'}`}
                   >
                     {column.header}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {data.length === 0 ? (
+            <tbody className="divide-y divide-slate-100">
+              {isEmpty ? (
                 <tr>
-                  <td 
-                    colSpan={columns.length} 
-                    className="px-4 py-8 text-center text-gray-500"
-                  >
-                    No data available
+                  <td colSpan={columns.length} className="px-4 py-8">
+                    <EmptyState
+                      icon={emptyIcon}
+                      title={emptyTitle}
+                      description={emptyDescription}
+                      action={emptyAction}
+                    />
                   </td>
                 </tr>
               ) : (
                 data.map((row, rowIndex) => (
                   <tr
-                    key={rowIndex}
+                    key={row.id || rowIndex}
                     onClick={() => onRowClick && onRowClick(row)}
-                    className={`${onRowClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                    className={`${onRowClick ? 'cursor-pointer hover:bg-slate-50' : ''} transition-colors`}
                   >
                     {columns.map((column, colIndex) => (
-                      <td key={colIndex} className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 max-w-[150px] truncate">
+                      <td
+                        key={colIndex}
+                        className={`px-4 py-3 text-sm text-slate-700
+                          ${column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left'}`}
+                      >
                         {column.render ? column.render(row) : row[column.accessor]}
                       </td>
                     ))}
@@ -132,7 +68,44 @@ const Table = ({ columns, data, onRowClick, className = '', enableCardView = fal
             </tbody>
           </table>
         </div>
-      )}
+      </div>
+
+      {/* Mobile cards */}
+      <div className={`md:hidden ${className}`}>
+        {isEmpty ? (
+          <EmptyState
+            icon={emptyIcon}
+            title={emptyTitle}
+            description={emptyDescription}
+            action={emptyAction}
+          />
+        ) : (
+          <div className="space-y-2.5">
+            {data.map((row, rowIndex) => (
+              <div
+                key={row.id || rowIndex}
+                onClick={() => onRowClick && onRowClick(row)}
+                className={`bg-white border border-slate-200 rounded-xl p-3.5
+                  ${onRowClick ? 'cursor-pointer active:bg-slate-50' : ''}`}
+              >
+                {renderCard ? renderCard(row) : (
+                  <div className="space-y-1.5">
+                    {columns.map((column, colIndex) => {
+                      const v = column.render ? column.render(row) : row[column.accessor];
+                      return (
+                        <div key={colIndex} className="flex justify-between gap-3 text-sm">
+                          <span className="text-slate-500 font-medium">{column.header}</span>
+                          <span className="text-slate-900 text-right break-words">{v}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 };

@@ -1,194 +1,270 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../../contexts/AppContext';
-import ProductForm from './ProductForm';
+import { Plus, Edit, Trash2, Search, Package, AlertTriangle } from 'lucide-react';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
-import Table from '../common/Table';
-import Alert from '../common/Alert';
-import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
+import Input from '../common/Input';
+import Select from '../common/Select';
+import Badge from '../common/Badge';
+import EmptyState from '../common/EmptyState';
+import ConfirmDialog from '../common/ConfirmDialog';
+import { Card, CardBody } from '../common/Card';
+import { formatINR } from '../../utils/calculations';
+import ProductForm from './ProductForm';
+
+const CATEGORY_TONES = {
+  Furniture: 'info',
+  Electronics: 'brand',
+  'Home Appliances': 'success',
+  'Office Supplies': 'warning',
+  Lighting: 'warning',
+  Decor: 'neutral',
+  Other: 'neutral',
+};
 
 const ProductList = () => {
-  const { products, dispatch, success, error } = useAppContext();
+  const { products, dispatch, settings, success, error } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [category, setCategory] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
-  const handleAddProduct = (productData) => {
-    console.log('Adding product:', productData);
-    try {
-      if (!productData || !productData.name) {
-        throw new Error('Invalid product data');
-      }
-      dispatch({ type: 'ADD_PRODUCT', payload: productData });
-      success('Product added successfully!');
-      setIsModalOpen(false);
-    } catch (err) {
-      console.error('Error adding product:', err);
-      error(err.message || 'Failed to add product');
+  const filtered = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return products.filter(p => {
+      const matchSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        (p.modelNumber || '').toLowerCase().includes(q);
+      const matchCategory = !category || p.category === category;
+      return matchSearch && matchCategory;
+    });
+  }, [products, searchTerm, category]);
+
+  const totalValue = useMemo(
+    () => products.reduce((sum, p) => sum + (p.sellingPrice || 0) * (p.quantity || 0), 0),
+    [products]
+  );
+  const lowStockCount = products.filter(p => (p.quantity || 0) <= (settings.lowStockThreshold || 5)).length;
+
+  const save = (data) => {
+    if (editing) {
+      dispatch({ type: 'UPDATE_PRODUCT', payload: data });
+      success('Product updated');
+    } else {
+      dispatch({ type: 'ADD_PRODUCT', payload: data });
+      success('Product added');
     }
+    setIsModalOpen(false);
+    setEditing(null);
   };
 
-  const handleEditProduct = (productData) => {
-    try {
-      dispatch({ type: 'UPDATE_PRODUCT', payload: productData });
-      success('Product updated successfully!');
-      setIsModalOpen(false);
-      setEditingProduct(null);
-    } catch (err) {
-      console.error('Error updating product:', err);
-      error('Failed to update product');
-    }
+  const remove = () => {
+    if (!deleting) return;
+    dispatch({ type: 'DELETE_PRODUCT', payload: deleting.id });
+    success(`${deleting.name} removed`);
+    setDeleting(null);
   };
 
-  const handleDeleteProduct = (productId) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        dispatch({ type: 'DELETE_PRODUCT', payload: productId });
-        success('Product deleted successfully!');
-      } catch (err) {
-        error('Failed to delete product');
-      }
-    }
-  };
-
-  const openEditModal = (product) => {
-    setEditingProduct(product);
-    setIsModalOpen(true);
-  };
-
-  // Filter products
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.modelNumber?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !categoryFilter || product.category === categoryFilter;
-    
-    return matchesSearch && matchesCategory;
-  });
-
-  const columns = [
-    { header: 'Product Name', accessor: 'name' },
-    { 
-      header: 'Category', 
-      accessor: 'category',
-      render: (row) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-          row.category === 'Furniture' 
-            ? 'bg-blue-100 text-blue-700' 
-            : row.category === 'Electronics'
-            ? 'bg-purple-100 text-purple-700'
-            : row.category === 'Home Appliances'
-            ? 'bg-green-100 text-green-700'
-            : row.category === 'Office Supplies'
-            ? 'bg-yellow-100 text-yellow-700'
-            : row.category === 'Lighting'
-            ? 'bg-pink-100 text-pink-700'
-            : 'bg-gray-100 text-gray-700'
-        }`}>
-          {row.category}
-        </span>
-      )
-    },
-    { 
-      header: 'Purchase Price', 
-      render: (row) => `Rs. ${row.purchasePrice?.toLocaleString()}` 
-    },
-    { 
-      header: 'Selling Price', 
-      render: (row) => <span className="font-bold text-green-600">Rs. ${row.sellingPrice?.toLocaleString()}</span>
-    },
-    { 
-      header: 'Quantity', 
-      render: (row) => (
-        <span className={row.quantity <= 5 ? 'text-red-600 font-bold' : ''}>
-          {row.quantity}
-        </span>
-      )
-    },
-    { header: 'Model No.', accessor: 'modelNumber' },
-    {
-      header: 'Actions',
-      render: (row) => (
-        <div className="flex space-x-2">
-          <button
-            onClick={() => openEditModal(row)}
-            className="text-blue-600 hover:text-blue-800 transition-colors"
-          >
-            <Edit size={18} />
-          </button>
-          <button
-            onClick={() => handleDeleteProduct(row.id)}
-            className="text-red-600 hover:text-red-800 transition-colors"
-          >
-            <Trash2 size={18} />
-          </button>
-        </div>
-      )
-    }
-  ];
+  const lowThreshold = settings.lowStockThreshold || 5;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 md:p-6">
-      {/* Header Actions - Responsive layout */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
-        <Button onClick={() => setIsModalOpen(true)} variant="primary" className="w-full sm:w-auto">
-          <Plus size={20} className="mr-2" />
-          Add Product
-        </Button>
-
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
-          {/* Search */}
-          <div className="relative w-full sm:w-64">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
-            />
-          </div>
-
-          {/* Category Filter */}
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-full sm:w-auto"
-          >
-            <option value="">All Categories</option>
-            <option value="Furniture">Furniture</option>
-            <option value="Electronics">Electronics</option>
-            <option value="Home Appliances">Home Appliances</option>
-            <option value="Office Supplies">Office Supplies</option>
-            <option value="Lighting">Lighting</option>
-            <option value="Decor">Decor</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
+    <div className="space-y-4 sm:space-y-5">
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card>
+          <CardBody>
+            <p className="text-sm text-slate-500">Total Products</p>
+            <p className="text-2xl font-bold text-slate-900 num-display">{products.length}</p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <p className="text-sm text-slate-500">Inventory Value</p>
+            <p className="text-2xl font-bold text-brand-700 num-display">{formatINR(totalValue)}</p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <p className="text-sm text-slate-500">Low Stock</p>
+            <p className="text-2xl font-bold text-warning-700 num-display">{lowStockCount}</p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <p className="text-sm text-slate-500">Categories</p>
+            <p className="text-2xl font-bold text-slate-900 num-display">
+              {new Set(products.map(p => p.category)).size}
+            </p>
+          </CardBody>
+        </Card>
       </div>
 
-      {/* Products Table with Card View on Mobile */}
-      <Table columns={columns} data={filteredProducts} enableCardView={true} />
+      {/* Toolbar */}
+      <Card>
+        <CardBody>
+          <div className="toolbar">
+            <div className="flex flex-1 flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center">
+              <Input
+                icon={<Search size={16} />}
+                placeholder="Search by name or model..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="sm:max-w-xs"
+              />
+              <Select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="sm:max-w-[180px]"
+              >
+                <option value="">All categories</option>
+                {Object.keys(CATEGORY_TONES).map(c => <option key={c}>{c}</option>)}
+              </Select>
+            </div>
+            <Button icon={<Plus size={16} />} onClick={() => { setEditing(null); setIsModalOpen(true); }}>
+              Add product
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
 
-      {/* Add/Edit Product Modal */}
+      {/* List */}
+      <Card>
+        <CardBody>
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={Package}
+              title={products.length === 0 ? 'No products yet' : 'No matching products'}
+              description={products.length === 0 ? 'Add your first product to start tracking stock.' : 'Try a different search or category.'}
+              action={products.length === 0 && (
+                <Button icon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>Add product</Button>
+              )}
+            />
+          ) : (
+            <>
+              {/* Desktop */}
+              <div className="hidden md:block">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase">Product</th>
+                        <th className="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase">Category</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase">Purchase</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase">Selling</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase">Margin</th>
+                        <th className="text-center px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase">Stock</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filtered.map(p => {
+                        const margin = p.purchasePrice ? ((p.sellingPrice - p.purchasePrice) / p.sellingPrice) * 100 : null;
+                        const lowStock = (p.quantity || 0) <= lowThreshold;
+                        return (
+                          <tr key={p.id} className="hover:bg-slate-50">
+                            <td className="px-3 py-3">
+                              <p className="text-sm font-medium text-slate-900">{p.name}</p>
+                              {p.modelNumber && <p className="text-xs text-slate-500">{p.modelNumber}</p>}
+                            </td>
+                            <td className="px-3 py-3">
+                              <Badge variant={CATEGORY_TONES[p.category] || 'neutral'}>{p.category}</Badge>
+                            </td>
+                            <td className="px-3 py-3 text-right text-sm text-slate-700 num-display">{formatINR(p.purchasePrice)}</td>
+                            <td className="px-3 py-3 text-right text-sm font-semibold text-slate-900 num-display">{formatINR(p.sellingPrice)}</td>
+                            <td className="px-3 py-3 text-right text-sm text-success-700">{margin !== null ? `${margin.toFixed(0)}%` : '—'}</td>
+                            <td className="px-3 py-3 text-center">
+                              {lowStock ? (
+                                <Badge variant={p.quantity === 0 ? 'danger' : 'warning'}>
+                                  {p.quantity === 0 ? 'Out' : `${p.quantity} left`}
+                                </Badge>
+                              ) : (
+                                <span className="text-sm text-slate-700">{p.quantity}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-right">
+                              <div className="inline-flex gap-1">
+                                <button
+                                  onClick={() => { setEditing(p); setIsModalOpen(true); }}
+                                  className="p-1.5 rounded-md text-slate-500 hover:text-brand-700 hover:bg-brand-50"
+                                  aria-label="Edit"
+                                ><Edit size={15} /></button>
+                                <button
+                                  onClick={() => setDeleting(p)}
+                                  className="p-1.5 rounded-md text-slate-500 hover:text-danger-600 hover:bg-danger-50"
+                                  aria-label="Delete"
+                                ><Trash2 size={15} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile */}
+              <div className="md:hidden space-y-2.5">
+                {filtered.map(p => {
+                  const lowStock = (p.quantity || 0) <= lowThreshold;
+                  return (
+                    <div key={p.id} className="border border-slate-200 rounded-xl p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{p.name}</p>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            <Badge variant={CATEGORY_TONES[p.category] || 'neutral'}>{p.category}</Badge>
+                            {lowStock && (
+                              <Badge variant={p.quantity === 0 ? 'danger' : 'warning'} icon={<AlertTriangle size={10} />}>
+                                {p.quantity === 0 ? 'Out' : `${p.quantity} left`}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-slate-900 num-display">{formatINR(p.sellingPrice)}</p>
+                          <p className="text-xs text-slate-500">Stock: {p.quantity}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+                        <p className="text-xs text-slate-500">Cost: {formatINR(p.purchasePrice)}</p>
+                        <div className="inline-flex gap-1">
+                          <Button size="xs" variant="ghost" icon={<Edit size={14} />} onClick={() => { setEditing(p); setIsModalOpen(true); }}>Edit</Button>
+                          <Button size="xs" variant="ghost" icon={<Trash2 size={14} />} onClick={() => setDeleting(p)}>Delete</Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </CardBody>
+      </Card>
+
       <Modal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingProduct(null);
-        }}
-        title={editingProduct ? 'Edit Product' : 'Add New Product'}
+        onClose={() => { setIsModalOpen(false); setEditing(null); }}
+        title={editing ? 'Edit product' : 'Add product'}
         size="md"
       >
         <ProductForm
-          product={editingProduct}
-          onSave={editingProduct ? handleEditProduct : handleAddProduct}
-          onCancel={() => {
-            setIsModalOpen(false);
-            setEditingProduct(null);
-          }}
+          product={editing}
+          onSave={save}
+          onCancel={() => { setIsModalOpen(false); setEditing(null); }}
         />
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={remove}
+        title={`Delete "${deleting?.name}"?`}
+        message="This will permanently remove the product from your stock. Existing invoices will keep their record."
+        confirmLabel="Delete"
+      />
     </div>
   );
 };

@@ -1,158 +1,86 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../../contexts/AppContext';
-import ExpenseForm from './ExpenseForm';
-import ExpenseList from './ExpenseList';
+import { Plus, Download, FileSpreadsheet, Receipt } from 'lucide-react';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
-import { Plus, Download, FileSpreadsheet } from 'lucide-react';
+import PageHeader from '../common/PageHeader';
+import StatCard from '../common/StatCard';
+import ExpenseForm from './ExpenseForm';
+import ExpenseList from './ExpenseList';
 import { exportExpensesCSV, exportExpensesPDF } from '../../utils/pdfGenerator';
+import { formatINR } from '../../utils/calculations';
+import { isToday, isThisMonth } from '../../utils/dates';
 
 const ExpenseManagement = () => {
   const { expenses, dispatch, success, error, settings } = useAppContext();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
 
-  const handleSaveExpense = (expenseData) => {
-    try {
-      if (editingExpense) {
-        // Update existing expense
-        dispatch({ type: 'UPDATE_EXPENSE', payload: expenseData });
-        success('Expense updated successfully');
-      } else {
-        // Add new expense
-        dispatch({ type: 'ADD_EXPENSE', payload: expenseData });
-        success('Expense added successfully');
-        
-        // If this is a new custom category (not in default list), save it to settings
-        const defaultCategories = ['Rent', 'Electricity Bill', 'Staff Salary', 'Transport / Delivery', 'Maintenance / Repair'];
-        if (!defaultCategories.includes(expenseData.category)) {
-          const existingCustomCategories = settings.expenseCategories || [];
-          if (!existingCustomCategories.includes(expenseData.category)) {
-            dispatch({ 
-              type: 'ADD_EXPENSE_CATEGORY', 
-              payload: expenseData.category 
-            });
-          }
-        }
+  const total = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
+  const todayTotal = useMemo(
+    () => expenses.filter(e => isToday(e.date)).reduce((s, e) => s + e.amount, 0),
+    [expenses]
+  );
+  const monthTotal = useMemo(
+    () => expenses.filter(e => isThisMonth(e.date)).reduce((s, e) => s + e.amount, 0),
+    [expenses]
+  );
+
+  const save = (data) => {
+    if (editing) {
+      dispatch({ type: 'UPDATE_EXPENSE', payload: data });
+      success('Expense updated');
+    } else {
+      dispatch({ type: 'ADD_EXPENSE', payload: data });
+      success('Expense added');
+
+      // Persist custom category if new
+      const defaults = ['Rent', 'Electricity Bill', 'Staff Salary', 'Transport / Delivery', 'Maintenance / Repair'];
+      const customs = settings.expenseCategories || [];
+      if (!defaults.includes(data.category) && !customs.includes(data.category)) {
+        dispatch({ type: 'ADD_EXPENSE_CATEGORY', payload: data.category });
       }
-      setIsFormOpen(false);
-      setEditingExpense(null);
-    } catch (err) {
-      console.error('Error saving expense:', err);
-      error('Failed to save expense');
     }
+    setFormOpen(false);
+    setEditing(null);
   };
 
-  const handleEditExpense = (expense) => {
-    setEditingExpense(expense);
-    setIsFormOpen(true);
-  };
+  const onEdit = (e) => { setEditing(e); setFormOpen(true); };
+  const onCancel = () => { setEditing(null); setFormOpen(false); };
 
-  const handleCancelForm = () => {
-    setIsFormOpen(false);
-    setEditingExpense(null);
-  };
-
-  const handleExportCSV = () => {
-    try {
-      exportExpensesCSV(expenses);
-      success('Expenses exported as CSV');
-    } catch (err) {
-      error('Failed to export expenses');
-    }
-  };
-
-  const handleExportPDF = () => {
-    try {
-      exportExpensesPDF(expenses);
-      success('Expenses exported as PDF');
-    } catch (err) {
-      error('Failed to export expenses');
-    }
+  const handleExport = (fn, label) => {
+    try { fn(expenses); success(`Exported as ${label}`); }
+    catch { error('Export failed'); }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Expense Management</h1>
-            <p className="text-sm text-gray-600 mt-1">Track and manage your business expenses</p>
-          </div>
-          
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={handleExportPDF}
-              variant="outline"
-              icon={<Download size={18} />}
-            >
-              Export PDF
+    <div className="page-shell">
+      <PageHeader
+        title="Expenses"
+        subtitle="Track every paisa going out so your profit numbers are real."
+        actions={
+          <>
+            <Button variant="outline" icon={<Download size={16} />} onClick={() => handleExport(exportExpensesPDF, 'PDF')}>
+              PDF
             </Button>
-            
-            <Button
-              onClick={handleExportCSV}
-              variant="outline"
-              icon={<FileSpreadsheet size={18} />}
-            >
-              Export CSV
+            <Button variant="outline" icon={<FileSpreadsheet size={16} />} onClick={() => handleExport(exportExpensesCSV, 'CSV')}>
+              CSV
             </Button>
-            
-            <Button
-              onClick={() => setIsFormOpen(true)}
-              variant="primary"
-              icon={<Plus size={18} />}
-            >
-              Add New Expense
-            </Button>
-          </div>
-        </div>
+            <Button icon={<Plus size={16} />} onClick={() => setFormOpen(true)}>Add expense</Button>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <StatCard label="All Time" value={formatINR(total)} icon={Receipt} tone="brand" />
+        <StatCard label="This Month" value={formatINR(monthTotal)} icon={Receipt} tone="warning" />
+        <StatCard label="Today" value={formatINR(todayTotal)} icon={Receipt} tone="danger" />
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border-2 border-blue-200">
-          <p className="text-sm text-blue-700 font-semibold mb-1">Total Expenses</p>
-          <p className="text-3xl font-bold text-blue-900">
-            ₹{expenses.reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}
-          </p>
-        </div>
-        
-        <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border-2 border-green-200">
-          <p className="text-sm text-green-700 font-semibold mb-1">This Month</p>
-          <p className="text-3xl font-bold text-green-900">
-            ₹{expenses
-              .filter(exp => {
-                const expDate = new Date(exp.date);
-                const now = new Date();
-                return expDate.getMonth() === now.getMonth() && expDate.getFullYear() === now.getFullYear();
-              })
-              .reduce((sum, exp) => sum + exp.amount, 0)
-              .toLocaleString()}
-          </p>
-        </div>
-        
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-200">
-          <p className="text-sm text-purple-700 font-semibold mb-1">Today's Expenses</p>
-          <p className="text-3xl font-bold text-purple-900">
-            ₹{expenses
-              .filter(exp => new Date(exp.date).toDateString() === new Date().toDateString())
-              .reduce((sum, exp) => sum + exp.amount, 0)
-              .toLocaleString()}
-          </p>
-        </div>
-      </div>
+      <ExpenseList onEdit={onEdit} />
 
-      {/* Expense List */}
-      <ExpenseList onEdit={handleEditExpense} />
-
-      {/* Add/Edit Expense Modal */}
-      <Modal isOpen={isFormOpen} onClose={handleCancelForm}>
-        <ExpenseForm
-          expense={editingExpense}
-          onSave={handleSaveExpense}
-          onCancel={handleCancelForm}
-        />
+      <Modal isOpen={formOpen} onClose={onCancel} title={editing ? 'Edit expense' : 'Add expense'} size="md">
+        <ExpenseForm expense={editing} onSave={save} onCancel={onCancel} />
       </Modal>
     </div>
   );

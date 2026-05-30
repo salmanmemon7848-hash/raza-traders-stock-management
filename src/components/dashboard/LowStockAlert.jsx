@@ -1,61 +1,62 @@
 import React from 'react';
 import { useAppContext } from '../../contexts/AppContext';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../common/Card';
+import EmptyState from '../common/EmptyState';
+import Button from '../common/Button';
+import Badge from '../common/Badge';
 
-const LowStockAlert = () => {
+const LowStockAlert = ({ onNavigate }) => {
   const { products, settings } = useAppContext();
   const threshold = settings.lowStockThreshold || 5;
-  
-  const lowStockProducts = products.filter(product => product.quantity <= threshold);
+  const lowStock = products
+    .filter(p => (p.quantity || 0) <= threshold)
+    .sort((a, b) => (a.quantity || 0) - (b.quantity || 0))
+    .slice(0, 6);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-gray-900 flex items-center">
-          <AlertTriangle size={20} className="mr-2 text-red-500" />
-          Low Stock Alerts
-        </h3>
-        <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold">
-          {lowStockProducts.length} Items
-        </span>
-      </div>
-      
-      {lowStockProducts.length === 0 ? (
-        <p className="text-green-600 text-center py-4">All products are well stocked!</p>
-      ) : (
-        <div className="space-y-3">
-          {lowStockProducts.map((product) => (
-            <div 
-              key={product.id}
-              className={`p-3 rounded-lg border-l-4 ${
-                product.quantity === 0 
-                  ? 'bg-red-50 border-red-500' 
-                  : 'bg-yellow-50 border-yellow-500'
-              }`}
+    <Card>
+      <CardHeader
+        title="Low Stock"
+        subtitle={`Threshold: ${threshold} units`}
+        icon={<AlertTriangle size={18} />}
+        actions={
+          lowStock.length > 0 && (
+            <Button
+              size="xs"
+              variant="ghost"
+              icon={<ArrowRight size={14} />}
+              iconPosition="right"
+              onClick={() => onNavigate?.('stock')}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-gray-900">{product.name}</p>
-                  <p className="text-sm text-gray-600">Category: {product.category}</p>
-                </div>
-                <div className="text-right">
-                  <p className={`text-lg font-bold ${
-                    product.quantity === 0 
-                      ? 'text-red-600' 
-                      : 'text-yellow-600'
-                  }`}>
-                    {product.quantity} left
-                  </p>
-                  {product.quantity === 0 && (
-                    <p className="text-xs text-red-600 font-semibold">Out of Stock</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+              View
+            </Button>
+          )
+        }
+      />
+      <CardBody>
+        {lowStock.length === 0 ? (
+          <EmptyState title="All well stocked" description="No items below the low-stock threshold." />
+        ) : (
+          <ul className="space-y-2.5">
+            {lowStock.map(p => {
+              const isOut = (p.quantity || 0) === 0;
+              return (
+                <li key={p.id} className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate">{p.name}</p>
+                    <p className="text-xs text-slate-500 truncate">{p.category || 'Uncategorized'}</p>
+                  </div>
+                  <Badge variant={isOut ? 'danger' : 'warning'}>
+                    {isOut ? 'Out of stock' : `${p.quantity} left`}
+                  </Badge>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </CardBody>
+    </Card>
   );
 };
 

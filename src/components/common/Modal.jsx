@@ -1,48 +1,70 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+const SIZES = {
+  sm: 'max-w-sm',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  '2xl': 'max-w-6xl',
+};
+
+const Modal = ({ isOpen, onClose, title, subtitle, children, size = 'md', footer }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const onEsc = (e) => e.key === 'Escape' && onClose?.();
+    document.addEventListener('keydown', onEsc);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onEsc);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  const sizes = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl'
-  };
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
-      <div className="flex items-center justify-center min-h-screen px-3 sm:px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay with smoother transition */}
-        <div 
-          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75" 
-          onClick={onClose}
-          aria-hidden="true"
-        />
+    <div className="fixed inset-0 z-50 overflow-y-auto animate-fade-in" role="dialog" aria-modal="true">
+      <div
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="flex min-h-full items-end sm:items-center justify-center p-3 sm:p-4">
+        <div
+          className={`relative w-full ${SIZES[size] || SIZES.md} bg-white rounded-2xl shadow-floating animate-slide-up max-h-[92vh] flex flex-col`}
+        >
+          {(title || subtitle) && (
+            <div className="flex items-start justify-between gap-4 px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100">
+              <div className="min-w-0">
+                {title && (
+                  <h3 className="text-lg font-semibold text-slate-900 truncate">
+                    {title}
+                  </h3>
+                )}
+                {subtitle && (
+                  <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+                )}
+              </div>
+              <button
+                onClick={onClose}
+                className="shrink-0 -mr-1 p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          )}
 
-        {/* This element is to trick the browser into centering the modal contents. */}
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        {/* Modal panel - Responsive sizing */}
-        <div className={`inline-block w-full ${sizes[size]} p-4 sm:p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-xl sm:rounded-2xl`}>
-          {/* Header - Better mobile spacing */}
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate pr-8">{title}</h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-lg hover:bg-gray-100 touch-target-large absolute top-4 right-4 sm:static sm:p-0 sm:hover:bg-transparent"
-              aria-label="Close modal"
-            >
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Content - Scrollable on mobile if needed */}
-          <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5">
             {children}
           </div>
+
+          {footer && (
+            <div className="px-5 sm:px-6 py-4 border-t border-slate-100 bg-slate-50/60 rounded-b-2xl">
+              {footer}
+            </div>
+          )}
         </div>
       </div>
     </div>

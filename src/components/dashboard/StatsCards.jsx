@@ -1,16 +1,14 @@
 import React from 'react';
 import { DollarSign, TrendingUp, Package, Users, Receipt } from 'lucide-react';
 import { useAppContext } from '../../contexts/AppContext';
-import { calculateProfit } from '../../utils/calculations';
+import { calculateTotalGrossProfit, calculateNetProfit } from '../../utils/calculations';
 
 const StatsCards = () => {
   const { products, customers, invoices, expenses } = useAppContext();
-  
+
   const totalSales = invoices.reduce((sum, invoice) => sum + invoice.grandTotal, 0);
-  const grossProfit = calculateProfit(products, invoices);
   const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-  const netProfit = grossProfit - totalExpenses;
-  const totalProducts = products.length;
+  const netProfit = calculateNetProfit(invoices, products, expenses);
   const totalCustomers = customers.length;
 
   const cards = [

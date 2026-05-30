@@ -1,41 +1,54 @@
 import React from 'react';
 import { useAppContext } from '../../contexts/AppContext';
+import { Card, CardHeader, CardBody } from '../common/Card';
+import EmptyState from '../common/EmptyState';
+import Badge from '../common/Badge';
+import { Receipt } from 'lucide-react';
+import { formatINR, getInvoiceOutstanding } from '../../utils/calculations';
+import { formatRelative } from '../../utils/dates';
 
 const RecentTransactions = () => {
   const { invoices } = useAppContext();
-  const recentInvoices = [...invoices]
+  const recent = [...invoices]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5);
+    .slice(0, 6);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
-      <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Recent Transactions</h3>
-      
-      {recentInvoices.length === 0 ? (
-        <p className="text-gray-500 text-center py-8 text-sm sm:text-base">No transactions yet</p>
-      ) : (
-        <div className="space-y-2 sm:space-y-3">
-          {recentInvoices.map((invoice) => (
-            <div 
-              key={invoice.id}
-              className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex-1 min-w-0 mr-2 sm:mr-4">
-                <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{invoice.invoiceNumber}</p>
-                <p className="text-xs text-gray-600 truncate">{invoice.customer?.name || 'Customer'}</p>
-                <p className="text-xs text-gray-500 hidden sm:block">
-                  {new Date(invoice.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="font-bold text-green-600 text-xs sm:text-sm">₹{invoice.grandTotal.toLocaleString()}</p>
-                <p className="text-xs text-gray-500">{invoice.items.length} items</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <Card>
+      <CardHeader title="Recent Bills" subtitle="Latest transactions" icon={<Receipt size={18} />} />
+      <CardBody>
+        {recent.length === 0 ? (
+          <EmptyState title="No bills yet" description="Your latest sales will appear here." />
+        ) : (
+          <div className="divide-y divide-slate-100 -my-3">
+            {recent.map(inv => {
+              const outstanding = getInvoiceOutstanding(inv);
+              return (
+                <div key={inv.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{inv.invoiceNumber}</p>
+                      {outstanding > 0 ? (
+                        <Badge variant="warning">{inv.paymentStatus === 'partial_credit' ? 'Partial' : 'Credit'}</Badge>
+                      ) : (
+                        <Badge variant="success">Paid</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 truncate">
+                      {inv.customer?.name || 'Walk-in'} · {formatRelative(inv.createdAt)}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold text-slate-900 num-display">{formatINR(inv.grandTotal)}</p>
+                    <p className="text-xs text-slate-500">{inv.items?.length || 0} item{(inv.items?.length || 0) === 1 ? '' : 's'}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardBody>
+    </Card>
   );
 };
 

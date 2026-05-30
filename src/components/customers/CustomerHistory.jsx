@@ -1,89 +1,111 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useAppContext } from '../../contexts/AppContext';
 import Modal from '../common/Modal';
-import Button from '../common/Button';
+import Badge from '../common/Badge';
+import EmptyState from '../common/EmptyState';
+import { formatINR, getInvoiceOutstanding } from '../../utils/calculations';
+import { formatDate } from '../../utils/dates';
+import { Receipt } from 'lucide-react';
 
 const CustomerHistory = ({ customer, onClose }) => {
+  const { invoices, payments } = useAppContext();
   if (!customer) return null;
+
+  const customerInvoices = invoices
+    .filter(inv => inv.customer?.id === customer.id)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  const customerPayments = payments
+    .filter(p => p.customerId === customer.id)
+    .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+
+  const totalOutstanding = customerInvoices.reduce((s, inv) => s + getInvoiceOutstanding(inv), 0);
 
   return (
     <Modal
-      isOpen={!!customer}
+      isOpen
       onClose={onClose}
-      title={`Purchase History - ${customer.name}`}
+      title={customer.name}
+      subtitle={customer.phone || 'No phone'}
       size="lg"
     >
-      <div className="space-y-6">
-        {/* Customer Info */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Phone</p>
-              <p className="font-semibold">{customer.phone || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Address</p>
-              <p className="font-semibold">{customer.address || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Spent</p>
-              <p className="font-bold text-green-600">Rs. {customer.totalSpent.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Customer Since</p>
-              <p className="font-semibold">
-                {new Date(customer.createdAt).toLocaleDateString()}
-              </p>
-            </div>
+      <div className="space-y-5">
+        {/* Snapshot */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="card p-3">
+            <p className="text-xs text-slate-500">Total Spent</p>
+            <p className="text-lg font-bold text-slate-900 num-display">{formatINR(customer.totalSpent || 0)}</p>
+          </div>
+          <div className="card p-3">
+            <p className="text-xs text-slate-500">Outstanding</p>
+            <p className={`text-lg font-bold num-display ${totalOutstanding > 0 ? 'text-danger-700' : 'text-success-700'}`}>
+              {formatINR(totalOutstanding)}
+            </p>
+          </div>
+          <div className="card p-3">
+            <p className="text-xs text-slate-500">Bills</p>
+            <p className="text-lg font-bold text-slate-900 num-display">{customerInvoices.length}</p>
+          </div>
+          <div className="card p-3">
+            <p className="text-xs text-slate-500">Since</p>
+            <p className="text-sm font-semibold text-slate-700">{formatDate(customer.createdAt)}</p>
           </div>
         </div>
 
-        {/* Purchase History */}
+        {customer.address && (
+          <div className="text-sm">
+            <span className="text-slate-500">Address: </span>
+            <span className="text-slate-900">{customer.address}</span>
+          </div>
+        )}
+
+        {/* Invoices */}
         <div>
-          <h4 className="font-bold text-gray-900 mb-3">Purchase History</h4>
-          
-          {customer.purchaseHistory && customer.purchaseHistory.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">
-                      Invoice #
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">
-                      Date
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {customer.purchaseHistory.map((purchase, index) => (
-                    <tr key={index}>
-                      <td className="px-4 py-3 text-sm font-semibold">
-                        {purchase.invoiceId}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {new Date(purchase.date).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-sm font-bold text-green-600">
-                        Rs. {purchase.amount.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <h4 className="text-sm font-semibold text-slate-900 mb-2">Bills</h4>
+          {customerInvoices.length === 0 ? (
+            <EmptyState icon={Receipt} title="No bills yet" />
           ) : (
-            <p className="text-gray-500 text-center py-8">No purchase history available</p>
+            <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl">
+              {customerInvoices.map(inv => {
+                const outstanding = getInvoiceOutstanding(inv);
+                return (
+                  <li key={inv.id} className="p-3 flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{inv.invoiceNumber}</p>
+                      <p className="text-xs text-slate-500">{formatDate(inv.createdAt)} · {inv.items?.length || 0} items</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-slate-900 num-display">{formatINR(inv.grandTotal)}</p>
+                      {outstanding > 0 ? (
+                        <Badge variant="warning">{formatINR(outstanding)} due</Badge>
+                      ) : (
+                        <Badge variant="success">Paid</Badge>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
 
-        <div className="flex justify-end pt-4">
-          <Button onClick={onClose} variant="outline">
-            Close
-          </Button>
-        </div>
+        {/* Payments */}
+        {customerPayments.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-slate-900 mb-2">Payments received</h4>
+            <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl">
+              {customerPayments.map(p => (
+                <li key={p.id} className="p-3 flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm text-slate-700">{formatDate(p.date || p.createdAt)}</p>
+                    {p.notes && <p className="text-xs text-slate-500">{p.notes}</p>}
+                  </div>
+                  <p className="text-sm font-semibold text-success-700 num-display">+ {formatINR(p.amount)}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </Modal>
   );
