@@ -29,11 +29,13 @@ import {
   getInvoiceOutstanding,
   calculateNetProfit,
   calculateInvoiceGrossProfit,
+  calculateGrandOutstanding,
+  getReceiptOutstanding,
 } from '../../utils/calculations';
 import { formatDate, isToday, isThisMonth, daysBetween } from '../../utils/dates';
 
 const Dashboard = ({ onNavigate }) => {
-  const { invoices, expenses, products, customers, payments, productRequests } = useAppContext();
+  const { invoices, expenses, products, customers, payments, productRequests, receipts } = useAppContext();
 
   // ---------- Today ----------
   const todayInvoices = useMemo(
@@ -54,13 +56,17 @@ const Dashboard = ({ onNavigate }) => {
       todayExpenses,
     [todayInvoices, products, todayExpenses]
   );
-  const todayReceived = useMemo(
-    () =>
-      payments
-        .filter(p => isToday(p.date || p.createdAt))
-        .reduce((s, p) => s + p.amount, 0),
-    [payments]
-  );
+  // "Today's payments received" = cash inflow from "Receive Payment" entries
+  // PLUS the amountReceived recorded directly on receipts created today.
+  const todayReceived = useMemo(() => {
+    const fromPayments = payments
+      .filter(p => isToday(p.date || p.createdAt))
+      .reduce((s, p) => s + (p.amount || 0), 0);
+    const fromReceipts = receipts
+      .filter(r => isToday(r.date || r.createdAt))
+      .reduce((s, r) => s + (r.amountReceived || 0), 0);
+    return fromPayments + fromReceipts;
+  }, [payments, receipts]);
 
   // ---------- Month ----------
   const monthSales = useMemo(
@@ -80,27 +86,46 @@ const Dashboard = ({ onNavigate }) => {
     return calculateNetProfit(monthInvoices, products, monthExp);
   }, [invoices, expenses, products]);
 
-  // ---------- Credit / Udhaar ----------
-  const totalOutstanding = useMemo(() => calculateTotalOutstanding(invoices), [invoices]);
+  // ---------- Credit / Udhaar (across invoices + receipts) ----------
+  const totalOutstanding = useMemo(
+    () => calculateGrandOutstanding(invoices, receipts),
+    [invoices, receipts]
+  );
   const pendingInvoices = useMemo(
     () => invoices.filter(inv => getInvoiceOutstanding(inv) > 0),
     [invoices]
   );
+  const pendingReceipts = useMemo(
+    () => receipts.filter(r => getReceiptOutstanding(r) > 0),
+    [receipts]
+  );
+  const totalPendingItems = pendingInvoices.length + pendingReceipts.length;
 
-  // Customers with old pending dues (>15 days)
+  // Customers with old pending dues (>15 days) — both invoices and receipts
   const overdueCustomers = useMemo(() => {
     const map = new Map();
     pendingInvoices.forEach(inv => {
       const days = daysBetween(inv.createdAt);
       if (days >= 15 && inv.customer?.name) {
-        const existing = map.get(inv.customer.name) || { name: inv.customer.name, phone: inv.customer.phone, amount: 0, oldestDays: 0 };
+        const key = inv.customer.name;
+        const existing = map.get(key) || { name: inv.customer.name, phone: inv.customer.phone, amount: 0, oldestDays: 0 };
         existing.amount += getInvoiceOutstanding(inv);
         existing.oldestDays = Math.max(existing.oldestDays, days);
-        map.set(inv.customer.name, existing);
+        map.set(key, existing);
+      }
+    });
+    pendingReceipts.forEach(r => {
+      const days = daysBetween(r.date || r.createdAt);
+      if (days >= 15 && r.customerName) {
+        const key = r.customerName;
+        const existing = map.get(key) || { name: r.customerName, phone: r.customerPhone, amount: 0, oldestDays: 0 };
+        existing.amount += getReceiptOutstanding(r);
+        existing.oldestDays = Math.max(existing.oldestDays, days);
+        map.set(key, existing);
       }
     });
     return Array.from(map.values()).sort((a, b) => b.amount - a.amount).slice(0, 5);
-  }, [pendingInvoices]);
+  }, [pendingInvoices, pendingReceipts]);
 
   // ---------- Pending product requests ----------
   const pendingRequestsCount = useMemo(
@@ -184,7 +209,10 @@ const Dashboard = ({ onNavigate }) => {
                   {formatINR(totalOutstanding)}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {pendingInvoices.length} unpaid {pendingInvoices.length === 1 ? 'invoice' : 'invoices'}
+                  {pendingInvoices.length > 0 && `${pendingInvoices.length} invoice${pendingInvoices.length === 1 ? '' : 's'}`}
+                  {pendingInvoices.length > 0 && pendingReceipts.length > 0 && ' · '}
+                  {pendingReceipts.length > 0 && `${pendingReceipts.length} receipt${pendingReceipts.length === 1 ? '' : 's'}`}
+                  {totalPendingItems === 0 && 'No pending items'}
                   {overdueCustomers.length > 0 && ` · ${overdueCustomers.length} customer${overdueCustomers.length === 1 ? '' : 's'} overdue >15 days`}
                 </p>
               </div>

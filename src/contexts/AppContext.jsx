@@ -101,6 +101,7 @@ export const AppProvider = ({ children }) => {
         expenses: state.expenses,
         payments: state.payments,
         productRequests: state.productRequests,
+        receipts: state.receipts,
         settings: state.settings,
       };
       try {
@@ -128,6 +129,7 @@ export const AppProvider = ({ children }) => {
     state.expenses,
     state.payments,
     state.productRequests,
+    state.receipts,
     state.settings,
   ]);
 

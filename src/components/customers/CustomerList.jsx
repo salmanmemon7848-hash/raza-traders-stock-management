@@ -10,28 +10,22 @@ import ConfirmDialog from '../common/ConfirmDialog';
 import { Card, CardBody, CardHeader } from '../common/Card';
 import CustomerForm from './CustomerForm';
 import CustomerHistory from './CustomerHistory';
-import { formatINR, getInvoiceOutstanding } from '../../utils/calculations';
+import { formatINR, buildCustomerOutstandingMap } from '../../utils/calculations';
 import { openWhatsApp } from '../../utils/whatsapp';
 
 const CustomerList = () => {
-  const { customers, invoices, dispatch, success } = useAppContext();
+  const { customers, invoices, receipts, dispatch, success } = useAppContext();
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState(null);
   const [deleting, setDeleting] = useState(null);
 
-  // Customer outstanding map
-  const outstandingMap = useMemo(() => {
-    const m = new Map();
-    invoices.forEach(inv => {
-      const o = getInvoiceOutstanding(inv);
-      if (o > 0 && inv.customer?.id) {
-        m.set(inv.customer.id, (m.get(inv.customer.id) || 0) + o);
-      }
-    });
-    return m;
-  }, [invoices]);
+  // Customer outstanding map (combined: invoices + receipts)
+  const outstandingMap = useMemo(
+    () => buildCustomerOutstandingMap(invoices, receipts),
+    [invoices, receipts]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

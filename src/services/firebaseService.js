@@ -15,6 +15,7 @@ const EMPTY_DATASET = {
   expenses: [],
   payments: [],
   productRequests: [],
+  receipts: [],
   settings: {},
 };
 

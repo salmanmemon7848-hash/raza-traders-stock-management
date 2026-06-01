@@ -5,30 +5,38 @@ import Button from '../common/Button';
 import Input from '../common/Input';
 import Select from '../common/Select';
 import Modal from '../common/Modal';
-import { formatINR, getInvoiceOutstanding } from '../../utils/calculations';
+import {
+  formatINR,
+  getInvoiceOutstanding,
+  getReceiptOutstanding,
+} from '../../utils/calculations';
 
 const today = () => new Date().toISOString().split('T')[0];
 
 const ReceivedPaymentForm = () => {
-  const { customers, invoices, dispatch, success, error } = useAppContext();
+  const { customers, invoices, receipts, dispatch, success, error } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState({
     customerId: '',
     customerName: '',
-    invoiceId: '',
+    applyTo: '',  // value format: "invoice:<id>" or "receipt:<id>"
     amount: '',
     date: today(),
     notes: '',
   });
 
-  const openInvoicesForCustomer = useMemo(() => {
-    if (!form.customerId) return [];
-    return invoices.filter(inv => inv.customer?.id === form.customerId && getInvoiceOutstanding(inv) > 0);
-  }, [form.customerId, invoices]);
+  // Open dues for the selected customer — both invoices and receipts
+  const openDues = useMemo(() => {
+    if (!form.customerId) return { invoices: [], receipts: [] };
+    return {
+      invoices: invoices.filter(inv => inv.customer?.id === form.customerId && getInvoiceOutstanding(inv) > 0),
+      receipts: receipts.filter(r => r.customerId === form.customerId && getReceiptOutstanding(r) > 0),
+    };
+  }, [form.customerId, invoices, receipts]);
 
   const onChangeCustomer = (id) => {
     const c = customers.find(c => c.id === id);
-    setForm({ ...form, customerId: id, customerName: c?.name || '', invoiceId: '' });
+    setForm({ ...form, customerId: id, customerName: c?.name || '', applyTo: '' });
   };
 
   const submit = (e) => {
@@ -41,12 +49,19 @@ const ReceivedPaymentForm = () => {
       error('Enter a valid amount');
       return;
     }
+
+    let invoiceId = null;
+    let receiptId = null;
+    if (form.applyTo.startsWith('invoice:')) invoiceId = form.applyTo.slice(8);
+    if (form.applyTo.startsWith('receipt:')) receiptId = form.applyTo.slice(8);
+
     dispatch({
       type: 'ADD_PAYMENT',
       payload: {
         customerId: form.customerId || null,
         customerName: form.customerName,
-        invoiceId: form.invoiceId || null,
+        invoiceId,
+        receiptId,
         amount: parseFloat(form.amount),
         date: form.date,
         notes: form.notes,
@@ -55,8 +70,10 @@ const ReceivedPaymentForm = () => {
     });
     success('Payment recorded');
     setIsOpen(false);
-    setForm({ customerId: '', customerName: '', invoiceId: '', amount: '', date: today(), notes: '' });
+    setForm({ customerId: '', customerName: '', applyTo: '', amount: '', date: today(), notes: '' });
   };
+
+  const hasOpenDues = openDues.invoices.length > 0 || openDues.receipts.length > 0;
 
   return (
     <>
@@ -99,19 +116,32 @@ const ReceivedPaymentForm = () => {
             />
           )}
 
-          {openInvoicesForCustomer.length > 0 && (
+          {hasOpenDues && (
             <Select
-              label="Apply to invoice"
-              hint="Reduces the outstanding amount on the chosen invoice"
-              value={form.invoiceId}
-              onChange={(e) => setForm({ ...form, invoiceId: e.target.value })}
+              label="Apply to"
+              hint="Auto-reduces the outstanding amount on the chosen item"
+              value={form.applyTo}
+              onChange={(e) => setForm({ ...form, applyTo: e.target.value })}
             >
               <option value="">Direct payment (not linked)</option>
-              {openInvoicesForCustomer.map(inv => (
-                <option key={inv.id} value={inv.id}>
-                  {inv.invoiceNumber} — Outstanding {formatINR(getInvoiceOutstanding(inv))}
-                </option>
-              ))}
+              {openDues.invoices.length > 0 && (
+                <optgroup label="🧾 Invoices">
+                  {openDues.invoices.map(inv => (
+                    <option key={inv.id} value={`invoice:${inv.id}`}>
+                      {inv.invoiceNumber} — Outstanding {formatINR(getInvoiceOutstanding(inv))}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {openDues.receipts.length > 0 && (
+                <optgroup label="📜 Receipts (parchi)">
+                  {openDues.receipts.map(r => (
+                    <option key={r.id} value={`receipt:${r.id}`}>
+                      {(r.productName || 'Receipt')} — Outstanding {formatINR(getReceiptOutstanding(r))}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </Select>
           )}
 

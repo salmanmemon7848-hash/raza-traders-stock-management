@@ -5,6 +5,7 @@ import {
   FileText,
   Users,
   Receipt,
+  ScrollText,
   BarChart3,
   Settings as SettingsIcon,
   ClipboardList,
@@ -24,6 +25,7 @@ const NAV_SECTIONS = [
     label: 'Sales & Customers',
     items: [
       { id: 'customers', label: 'Customers', icon: Users },
+      { id: 'receipts', label: 'Receipts', icon: ScrollText },
       { id: 'requests', label: 'Product Requests', icon: ClipboardList },
     ],
   },
@@ -55,7 +57,7 @@ const Sidebar = ({ currentPage, onNavigate, isOpen, onClose }) => {
       <aside
         className={`fixed top-0 left-0 z-40 h-full w-72 bg-white border-r border-slate-200
           transform transition-transform duration-200 ease-out
-          lg:static lg:translate-x-0 lg:shadow-none
+          lg:static lg:h-full lg:translate-x-0 lg:shadow-none lg:shrink-0
           ${isOpen ? 'translate-x-0 shadow-floating' : '-translate-x-full'}`}
         role="navigation"
         aria-label="Main navigation"
