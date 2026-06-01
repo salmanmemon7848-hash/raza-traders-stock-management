@@ -47,6 +47,7 @@ const ProductList = () => {
     [products]
   );
   const lowStockCount = products.filter(p => (p.quantity || 0) <= (settings.lowStockThreshold || 5)).length;
+  const noCostCount = products.filter(p => !p.purchasePrice || p.purchasePrice === 0).length;
 
   const save = (data) => {
     if (editing) {
@@ -91,12 +92,15 @@ const ProductList = () => {
             <p className="text-2xl font-bold text-warning-700 num-display">{lowStockCount}</p>
           </CardBody>
         </Card>
-        <Card>
+        <Card className={noCostCount > 0 ? 'border-warning-300' : ''}>
           <CardBody>
-            <p className="text-sm text-slate-500">Categories</p>
-            <p className="text-2xl font-bold text-slate-900 num-display">
-              {new Set(products.map(p => p.category)).size}
+            <p className="text-sm text-slate-500">Cost Price Missing</p>
+            <p className={`text-2xl font-bold num-display ${noCostCount > 0 ? 'text-warning-700' : 'text-slate-400'}`}>
+              {noCostCount}
             </p>
+            {noCostCount > 0 && (
+              <p className="text-xs text-warning-600 mt-0.5">Profit may be overstated</p>
+            )}
           </CardBody>
         </Card>
       </div>
@@ -160,7 +164,8 @@ const ProductList = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filtered.map(p => {
-                        const margin = p.purchasePrice ? ((p.sellingPrice - p.purchasePrice) / p.sellingPrice) * 100 : null;
+                        const noCost = !p.purchasePrice || p.purchasePrice === 0;
+                        const margin = !noCost ? ((p.sellingPrice - p.purchasePrice) / p.sellingPrice) * 100 : null;
                         const lowStock = (p.quantity || 0) <= lowThreshold;
                         return (
                           <tr key={p.id} className="hover:bg-slate-50">
@@ -171,9 +176,21 @@ const ProductList = () => {
                             <td className="px-3 py-3">
                               <Badge variant={CATEGORY_TONES[p.category] || 'neutral'}>{p.category}</Badge>
                             </td>
-                            <td className="px-3 py-3 text-right text-sm text-slate-700 num-display">{formatINR(p.purchasePrice)}</td>
+                            <td className="px-3 py-3 text-right">
+                              {noCost ? (
+                                <button
+                                  onClick={() => { setEditing(p); setIsModalOpen(true); }}
+                                  className="inline-flex items-center gap-1 text-xs font-medium text-warning-700 bg-warning-50 border border-warning-200 px-2 py-1 rounded-full hover:bg-warning-100 transition-colors"
+                                  title="Click to add purchase price"
+                                >
+                                  <Edit size={11} /> Add cost
+                                </button>
+                              ) : (
+                                <span className="text-sm text-slate-700 num-display">{formatINR(p.purchasePrice)}</span>
+                              )}
+                            </td>
                             <td className="px-3 py-3 text-right text-sm font-semibold text-slate-900 num-display">{formatINR(p.sellingPrice)}</td>
-                            <td className="px-3 py-3 text-right text-sm text-success-700">{margin !== null ? `${margin.toFixed(0)}%` : '—'}</td>
+                            <td className="px-3 py-3 text-right text-sm text-success-700">{margin !== null ? `${margin.toFixed(0)}%` : <span className="text-slate-400">—</span>}</td>
                             <td className="px-3 py-3 text-center">
                               {lowStock ? (
                                 <Badge variant={p.quantity === 0 ? 'danger' : 'warning'}>
@@ -208,6 +225,7 @@ const ProductList = () => {
               {/* Mobile */}
               <div className="md:hidden space-y-2.5">
                 {filtered.map(p => {
+                  const noCost = !p.purchasePrice || p.purchasePrice === 0;
                   const lowStock = (p.quantity || 0) <= lowThreshold;
                   return (
                     <div key={p.id} className="border border-slate-200 rounded-xl p-3">
@@ -221,6 +239,9 @@ const ProductList = () => {
                                 {p.quantity === 0 ? 'Out' : `${p.quantity} left`}
                               </Badge>
                             )}
+                            {noCost && (
+                              <Badge variant="warning" icon={<Edit size={10} />}>Cost price missing</Badge>
+                            )}
                           </div>
                         </div>
                         <div className="text-right">
@@ -229,7 +250,16 @@ const ProductList = () => {
                         </div>
                       </div>
                       <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
-                        <p className="text-xs text-slate-500">Cost: {formatINR(p.purchasePrice)}</p>
+                        {noCost ? (
+                          <button
+                            onClick={() => { setEditing(p); setIsModalOpen(true); }}
+                            className="text-xs font-medium text-warning-700 underline underline-offset-2"
+                          >
+                            Tap to add cost price
+                          </button>
+                        ) : (
+                          <p className="text-xs text-slate-500">Cost: {formatINR(p.purchasePrice)}</p>
+                        )}
                         <div className="inline-flex gap-1">
                           <Button size="xs" variant="ghost" icon={<Edit size={14} />} onClick={() => { setEditing(p); setIsModalOpen(true); }}>Edit</Button>
                           <Button size="xs" variant="ghost" icon={<Trash2 size={14} />} onClick={() => setDeleting(p)}>Delete</Button>

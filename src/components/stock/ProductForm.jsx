@@ -83,13 +83,14 @@ const ProductForm = ({ product, onSave, onCancel }) => {
 
       <div className="grid grid-cols-2 gap-3">
         <Input
-          label="Purchase price"
+          label="Purchase price (optional)"
           name="purchasePrice"
           type="number"
           value={form.purchasePrice}
           onChange={onChange}
           prefix="₹"
-          placeholder="0"
+          placeholder="Leave blank to fill later"
+          hint="Your buying cost — you can add this later"
         />
         <Input
           label="Selling price"
@@ -113,7 +114,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
         onChange={onChange}
         error={errors.quantity}
         placeholder="0"
-        hint={margin !== null ? `Margin: ${margin.toFixed(1)}%` : 'Enter how many units are available'}
+        hint={margin !== null ? `Margin: ${margin.toFixed(1)}%` : 'Quantity in stock right now'}
       />
 
       <div className="flex justify-end gap-2 pt-2">

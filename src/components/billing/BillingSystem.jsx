@@ -84,7 +84,16 @@ const QuickAddProductModal = ({ isOpen, onClose, onAdded }) => {
           <Input label="Model / SKU" name="modelNumber" value={form.modelNumber} onChange={handleChange} placeholder="Optional" />
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <Input label="Purchase ₹" name="purchasePrice" type="number" value={form.purchasePrice} onChange={handleChange} prefix="₹" />
+          <Input
+            label="Purchase ₹"
+            name="purchasePrice"
+            type="number"
+            value={form.purchasePrice}
+            onChange={handleChange}
+            prefix="₹"
+            placeholder="Optional"
+            hint="Fill later"
+          />
           <Input label="Selling ₹" name="sellingPrice" type="number" required value={form.sellingPrice} onChange={handleChange} prefix="₹" />
           <Input label="Quantity" name="quantity" type="number" required value={form.quantity} onChange={handleChange} />
         </div>
