@@ -5,7 +5,6 @@ import {
   FileText,
   Users,
   Receipt,
-  ScrollText,
   BarChart3,
   Settings as SettingsIcon,
   ClipboardList,
@@ -25,7 +24,6 @@ const NAV_SECTIONS = [
     label: 'Sales & Customers',
     items: [
       { id: 'customers', label: 'Customers', icon: Users },
-      { id: 'receipts', label: 'Receipts', icon: ScrollText },
       { id: 'requests', label: 'Product Requests', icon: ClipboardList },
     ],
   },

@@ -3,15 +3,15 @@ import { saveDataToCloud, clearCloudData } from '../services/firebaseService';
 
 export const useBackup = () => {
   const { dispatch, success, error,
-    products, customers, invoices, expenses, payments, productRequests, receipts, settings,
+    products, customers, invoices, expenses, payments, productRequests, settings,
   } = useAppContext();
 
   const exportBackup = () => {
     try {
       const backup = {
-        version: '2.1',
+        version: '2.0',
         timestamp: new Date().toISOString(),
-        data: { products, customers, invoices, expenses, payments, productRequests, receipts, settings },
+        data: { products, customers, invoices, expenses, payments, productRequests, settings },
       };
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       const link = document.createElement('a');

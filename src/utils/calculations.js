@@ -95,35 +95,6 @@ export const getInvoiceOutstanding = (invoice) => {
 export const calculateTotalOutstanding = (invoices) =>
   invoices.reduce((sum, inv) => sum + getInvoiceOutstanding(inv), 0);
 
-// Outstanding from a single receipt
-export const getReceiptOutstanding = (receipt) =>
-  Math.max(0, Number(receipt?.pendingAmount) || 0);
-
-export const calculateTotalReceiptsOutstanding = (receipts) =>
-  (receipts || []).reduce((sum, r) => sum + getReceiptOutstanding(r), 0);
-
-// Combined outstanding across invoices + receipts (used everywhere on dashboard)
-export const calculateGrandOutstanding = (invoices, receipts) =>
-  calculateTotalOutstanding(invoices) + calculateTotalReceiptsOutstanding(receipts);
-
-// Per-customer outstanding totals across both invoices and receipts.
-// Returns a Map keyed by customerId.
-export const buildCustomerOutstandingMap = (invoices, receipts) => {
-  const map = new Map();
-  (invoices || []).forEach(inv => {
-    const o = getInvoiceOutstanding(inv);
-    if (o > 0 && inv.customer?.id) {
-      map.set(inv.customer.id, (map.get(inv.customer.id) || 0) + o);
-    }
-  });
-  (receipts || []).forEach(r => {
-    const o = getReceiptOutstanding(r);
-    if (o > 0 && r.customerId) {
-      map.set(r.customerId, (map.get(r.customerId) || 0) + o);
-    }
-  });
-  return map;
-};
 
 // ---------- Helpers ----------
 export const isSameDay = (d1, d2) =>

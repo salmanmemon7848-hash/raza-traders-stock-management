@@ -18,9 +18,6 @@ import {
   calculateTotalGrossProfit,
   getInvoiceOutstanding,
   calculateTotalOutstanding,
-  getReceiptOutstanding,
-  calculateTotalReceiptsOutstanding,
-  calculateGrandOutstanding,
 } from '../../utils/calculations';
 import { formatDate } from '../../utils/dates';
 import { openWhatsApp } from '../../utils/whatsapp';
@@ -53,19 +50,16 @@ const buildPdf = (title, head, body, fileName) => {
 };
 
 const Reports = () => {
-  const { products, customers, invoices, receipts, settings } = useAppContext();
+  const { products, customers, invoices, settings } = useAppContext();
   const [tab, setTab] = useState('profit');
 
   // Profit aggregates
   const totalSales = useMemo(() => invoices.reduce((s, i) => s + i.grandTotal, 0), [invoices]);
   const totalGrossProfit = useMemo(() => calculateTotalGrossProfit(invoices, products), [invoices, products]);
 
-  // Credit aggregates (invoices + receipts)
-  const invoicesOutstanding = useMemo(() => calculateTotalOutstanding(invoices), [invoices]);
-  const receiptsOutstanding = useMemo(() => calculateTotalReceiptsOutstanding(receipts), [receipts]);
-  const totalOutstanding = invoicesOutstanding + receiptsOutstanding;
+  // Credit aggregates
+  const totalOutstanding = useMemo(() => calculateTotalOutstanding(invoices), [invoices]);
   const pendingInvoices = useMemo(() => invoices.filter(i => getInvoiceOutstanding(i) > 0), [invoices]);
-  const pendingReceipts = useMemo(() => receipts.filter(r => getReceiptOutstanding(r) > 0), [receipts]);
 
   return (
     <div className="page-shell">
@@ -174,10 +168,9 @@ const Reports = () => {
       {/* CREDIT */}
       {tab === 'credit' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <StatCard label="Total Pending" value={formatINR(totalOutstanding)} icon={AlertTriangle} tone="danger" />
-            <StatCard label="From Invoices" value={formatINR(invoicesOutstanding)} tone="warning" hint={`${pendingInvoices.length} unpaid`} />
-            <StatCard label="From Receipts" value={formatINR(receiptsOutstanding)} tone="warning" hint={`${pendingReceipts.length} unpaid`} />
+            <StatCard label="Unpaid Bills" value={pendingInvoices.length} tone="warning" />
             <StatCard label="Paid Bills" value={invoices.length - pendingInvoices.length} tone="success" />
           </div>
 
@@ -248,71 +241,6 @@ const Reports = () => {
             </CardBody>
           </Card>
 
-          {/* Unpaid receipts */}
-          {pendingReceipts.length > 0 && (
-            <Card>
-              <CardHeader title="Unpaid receipts (parchi)" />
-              <CardBody>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="border-b border-slate-200">
-                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Date</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Customer</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Product</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Total</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Outstanding</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Status</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {pendingReceipts.map(r => {
-                        const outstanding = getReceiptOutstanding(r);
-                        return (
-                          <tr key={r.id} className="hover:bg-slate-50">
-                            <td className="px-3 py-2.5 text-sm text-slate-600">{formatDate(r.date || r.createdAt)}</td>
-                            <td className="px-3 py-2.5 text-sm text-slate-700">{r.customerName}</td>
-                            <td className="px-3 py-2.5 text-sm text-slate-700">
-                              {r.productName || <span className="text-slate-400 italic">—</span>}
-                            </td>
-                            <td className="px-3 py-2.5 text-right text-sm text-slate-900 num-display">{formatINR(r.totalAmount)}</td>
-                            <td className="px-3 py-2.5 text-right text-sm font-bold text-danger-700 num-display">{formatINR(outstanding)}</td>
-                            <td className="px-3 py-2.5 text-right">
-                              <Badge variant={r.status === 'partial' ? 'warning' : 'danger'}>
-                                {r.status === 'partial' ? 'Partial' : 'Credit'}
-                              </Badge>
-                            </td>
-                            <td className="px-3 py-2.5 text-right">
-                              {r.customerPhone && (
-                                <Button
-                                  size="xs"
-                                  variant="ghost"
-                                  icon={<MessageCircle size={14} />}
-                                  onClick={() =>
-                                    openWhatsApp({
-                                      phone: r.customerPhone,
-                                      message:
-                                        `Hi ${r.customerName}, friendly reminder of pending amount ` +
-                                        `${formatINR(outstanding)}${r.productName ? ` for ${r.productName}` : ''} from ` +
-                                        `${settings.companyName || 'Raza Traders'}. ` +
-                                        `Please clear at your convenience. Thank you!`,
-                                    })
-                                  }
-                                >
-                                  Remind
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </CardBody>
-            </Card>
-          )}
         </div>
       )}
 
@@ -461,17 +389,14 @@ const Reports = () => {
                     'Customer Report',
                     [['Name', 'Phone', 'Total Spent', 'Outstanding']],
                     customers.map(c => {
-                      const invOut = invoices
+                      const outstanding = invoices
                         .filter(inv => inv.customer?.id === c.id)
                         .reduce((s, inv) => s + getInvoiceOutstanding(inv), 0);
-                      const recOut = receipts
-                        .filter(r => r.customerId === c.id)
-                        .reduce((s, r) => s + getReceiptOutstanding(r), 0);
                       return [
                         c.name,
                         c.phone || '-',
                         formatINR(c.totalSpent || 0),
-                        formatINR(invOut + recOut),
+                        formatINR(outstanding),
                       ];
                     }),
                     `customer-report-${new Date().toISOString().split('T')[0]}.pdf`
@@ -498,13 +423,9 @@ const Reports = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {customers.map(c => {
-                      const invOut = invoices
+                      const outstanding = invoices
                         .filter(inv => inv.customer?.id === c.id)
                         .reduce((s, inv) => s + getInvoiceOutstanding(inv), 0);
-                      const recOut = receipts
-                        .filter(r => r.customerId === c.id)
-                        .reduce((s, r) => s + getReceiptOutstanding(r), 0);
-                      const outstanding = invOut + recOut;
                       return (
                         <tr key={c.id} className="hover:bg-slate-50">
                           <td className="px-3 py-2.5 text-sm font-medium text-slate-900">{c.name}</td>

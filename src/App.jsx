@@ -9,7 +9,6 @@ import ExpenseManagement from './components/expenses/ExpenseManagement';
 import Settings from './components/settings/Settings';
 import Reports from './components/reports/Reports';
 import ProductRequests from './components/requests/ProductRequests';
-import Receipts from './components/receipts/Receipts';
 import Notifications from './components/common/Notifications';
 import { AppProvider } from './contexts/AppContext';
 
@@ -18,7 +17,6 @@ const PAGE_TITLES = {
   stock: 'Stock',
   billing: 'New Bill',
   customers: 'Customers',
-  receipts: 'Receipts',
   requests: 'Product Requests',
   expenses: 'Expenses',
   reports: 'Reports',
@@ -35,7 +33,6 @@ const AppContent = () => {
       case 'stock':     return <StockManagement />;
       case 'billing':   return <BillingSystem />;
       case 'customers': return <CustomerManagement />;
-      case 'receipts':  return <Receipts />;
       case 'requests':  return <ProductRequests />;
       case 'expenses':  return <ExpenseManagement />;
       case 'reports':   return <Reports />;
@@ -53,7 +50,6 @@ const AppContent = () => {
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Right column — header is sticky, main scrolls independently */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header
           onMenuClick={() => setSidebarOpen(true)}
