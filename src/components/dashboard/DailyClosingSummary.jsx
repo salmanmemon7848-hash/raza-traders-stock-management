@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Moon,
   IndianRupee,
@@ -8,6 +8,8 @@ import {
   Wallet,
   Award,
   Target as TargetIcon,
+  FileDown,
+  CheckCircle,
 } from 'lucide-react';
 import { useAppContext } from '../../contexts/AppContext';
 import Modal from '../common/Modal';
@@ -17,7 +19,7 @@ import {
   calculateInvoiceGrossProfit,
 } from '../../utils/calculations';
 import { isToday } from '../../utils/dates';
-import { openWhatsApp } from '../../utils/whatsapp';
+import { generateClosingReportPDF } from '../../utils/closingReportPdf';
 
 const StatRow = ({ icon: Icon, label, value, tone = 'slate', sublabel }) => {
   const toneMap = {
@@ -46,6 +48,8 @@ const StatRow = ({ icon: Icon, label, value, tone = 'slate', sublabel }) => {
 
 const DailyClosingSummary = ({ isOpen, onClose }) => {
   const { invoices, expenses, products, payments, settings } = useAppContext();
+  const [generating, setGenerating] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   const data = useMemo(() => {
     const todayInvoices = invoices.filter((inv) => isToday(inv.createdAt));
@@ -65,7 +69,6 @@ const DailyClosingSummary = ({ isOpen, onClose }) => {
       0
     );
 
-    // Top product sold today
     const productCount = {};
     todayInvoices.forEach((inv) => {
       (inv.items || []).forEach((item) => {
@@ -98,41 +101,17 @@ const DailyClosingSummary = ({ isOpen, onClose }) => {
     };
   }, [invoices, expenses, products, payments, settings]);
 
-  const buildShareMessage = () => {
-    const today = new Date().toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-    const shop = settings?.companyName || 'Raza Traders';
-    const lines = [];
-    lines.push(`*${shop} — Daily Closing Summary*`);
-    lines.push(`📅 ${today}`);
-    lines.push('');
-    lines.push(`🧾 Bills: ${data.billsCount}`);
-    lines.push(`💰 Revenue: ${formatINR(data.revenue).replace('₹', 'Rs. ')}`);
-    lines.push(`📈 Gross profit: ${formatINR(data.grossProfit).replace('₹', 'Rs. ')}`);
-    lines.push(`📉 Expenses: ${formatINR(data.expenseTotal).replace('₹', 'Rs. ')}`);
-    lines.push(`✅ Net profit: ${formatINR(data.netProfit).replace('₹', 'Rs. ')}`);
-    lines.push(`💵 Payments received: ${formatINR(data.received).replace('₹', 'Rs. ')}`);
-    if (data.creditGiven > 0) {
-      lines.push(`📋 Credit given today: ${formatINR(data.creditGiven).replace('₹', 'Rs. ')}`);
+  const handleDownloadPDF = async () => {
+    setGenerating(true);
+    setDownloaded(false);
+    try {
+      await generateClosingReportPDF(data, settings);
+      setDownloaded(true);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      setGenerating(false);
     }
-    if (data.topProduct) {
-      lines.push('');
-      lines.push(`⭐ Top product: ${data.topProduct.name} (${data.topProduct.quantity} sold)`);
-    }
-    if (data.target > 0) {
-      lines.push('');
-      lines.push(
-        `🎯 Target: ${formatINR(data.target).replace('₹', 'Rs. ')} — ${data.targetPercent.toFixed(0)}% achieved`
-      );
-    }
-    return lines.join('\n');
-  };
-
-  const handleShare = () => {
-    openWhatsApp({ message: buildShareMessage() });
   };
 
   return (
@@ -148,12 +127,38 @@ const DailyClosingSummary = ({ isOpen, onClose }) => {
       })}
       size="md"
       footer={
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={onClose} className="sm:flex-1">
-            Close
+        <div className="space-y-3">
+          {/* Download PDF Button */}
+          <Button
+            fullWidth
+            onClick={handleDownloadPDF}
+            loading={generating}
+            icon={downloaded ? <CheckCircle size={16} /> : <FileDown size={16} />}
+            variant={downloaded ? 'success' : 'primary'}
+          >
+            {generating
+              ? 'Generating PDF…'
+              : downloaded
+              ? 'PDF Downloaded!'
+              : 'Download as PDF'}
           </Button>
-          <Button onClick={handleShare} className="sm:flex-1">
-            Share to WhatsApp
+
+          {/* WhatsApp instructions (shown after download) */}
+          {downloaded && (
+            <div className="bg-success-50 border border-success-200 rounded-xl p-3 text-sm">
+              <p className="font-semibold text-success-800 mb-1">📤 To share on WhatsApp:</p>
+              <ol className="text-success-700 text-xs space-y-1 list-decimal list-inside">
+                <li>Open WhatsApp on your phone</li>
+                <li>Open the chat you want to share with</li>
+                <li>Tap the 📎 attachment icon</li>
+                <li>Select <strong>Document</strong> → find the downloaded PDF</li>
+                <li>Send!</li>
+              </ol>
+            </div>
+          )}
+
+          <Button variant="outline" fullWidth onClick={onClose}>
+            Close
           </Button>
         </div>
       }
