@@ -21,8 +21,9 @@ import PageHeader from '../common/PageHeader';
 import { Card, CardHeader, CardBody } from '../common/Card';
 import SalesChart from './SalesChart';
 import TopProducts from './TopProducts';
-import LowStockAlert from './LowStockAlert';
+import SmartRestock from './SmartRestock';
 import RecentTransactions from './RecentTransactions';
+import DailyTargetCard from './DailyTargetCard';
 import {
   formatINR,
   calculateTotalOutstanding,
@@ -137,6 +138,12 @@ const Dashboard = ({ onNavigate }) => {
             </Button>
           </>
         }
+      />
+
+      {/* Daily Target */}
+      <DailyTargetCard
+        todaySales={todaySales}
+        todayInvoicesCount={todayInvoices.length}
       />
 
       {/* Today's KPIs */}
@@ -296,7 +303,7 @@ const Dashboard = ({ onNavigate }) => {
           <RecentTransactions />
         </div>
         <div className="space-y-4 sm:space-y-5">
-          <LowStockAlert onNavigate={onNavigate} />
+          <SmartRestock onNavigate={onNavigate} />
           {/* Overdue customers */}
           <Card>
             <CardHeader

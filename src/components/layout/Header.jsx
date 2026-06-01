@@ -1,9 +1,15 @@
 import React from 'react';
-import { Menu, Plus } from 'lucide-react';
+import { Menu, Plus, Moon } from 'lucide-react';
 import SyncStatus from '../common/SyncStatus';
 import Button from '../common/Button';
 
-const Header = ({ onMenuClick, title, onQuickAction, quickActionLabel = 'New Bill' }) => {
+const Header = ({
+  onMenuClick,
+  title,
+  onQuickAction,
+  quickActionLabel = 'New Bill',
+  onCloseShop,
+}) => {
   return (
     <header className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-200">
       <div className="flex items-center justify-between gap-3 px-3 sm:px-5 h-16">
@@ -22,6 +28,28 @@ const Header = ({ onMenuClick, title, onQuickAction, quickActionLabel = 'New Bil
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <SyncStatus />
+          {onCloseShop && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onCloseShop}
+              icon={<Moon size={16} />}
+              className="hidden md:inline-flex"
+              title="Daily closing summary"
+            >
+              Close Shop
+            </Button>
+          )}
+          {onCloseShop && (
+            <button
+              onClick={onCloseShop}
+              className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+              aria-label="Close Shop"
+              title="Daily closing summary"
+            >
+              <Moon size={20} />
+            </button>
+          )}
           {onQuickAction && (
             <Button
               size="sm"

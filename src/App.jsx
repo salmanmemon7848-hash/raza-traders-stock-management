@@ -10,6 +10,7 @@ import Settings from './components/settings/Settings';
 import Reports from './components/reports/Reports';
 import ProductRequests from './components/requests/ProductRequests';
 import Notifications from './components/common/Notifications';
+import DailyClosingSummary from './components/dashboard/DailyClosingSummary';
 import { AppProvider } from './contexts/AppContext';
 
 const PAGE_TITLES = {
@@ -26,6 +27,7 @@ const PAGE_TITLES = {
 const AppContent = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [closingSummaryOpen, setClosingSummaryOpen] = useState(false);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -57,12 +59,17 @@ const AppContent = () => {
           onQuickAction={
             currentPage !== 'billing' ? () => setCurrentPage('billing') : undefined
           }
+          onCloseShop={() => setClosingSummaryOpen(true)}
         />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {renderPage()}
         </main>
       </div>
 
+      <DailyClosingSummary
+        isOpen={closingSummaryOpen}
+        onClose={() => setClosingSummaryOpen(false)}
+      />
       <Notifications />
     </div>
   );
