@@ -11,12 +11,14 @@ import Reports from './components/reports/Reports';
 import ProductRequests from './components/requests/ProductRequests';
 import Notifications from './components/common/Notifications';
 import DailyClosingSummary from './components/dashboard/DailyClosingSummary';
+import SalesManagement from './components/sales/SalesManagement';
 import { AppProvider } from './contexts/AppContext';
 
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
   stock: 'Stock',
   billing: 'New Bill',
+  sales: 'Sales',
   customers: 'Customers',
   requests: 'Product Requests',
   expenses: 'Expenses',
@@ -34,6 +36,7 @@ const AppContent = () => {
       case 'dashboard': return <Dashboard onNavigate={setCurrentPage} />;
       case 'stock':     return <StockManagement />;
       case 'billing':   return <BillingSystem />;
+      case 'sales':     return <SalesManagement />;
       case 'customers': return <CustomerManagement />;
       case 'requests':  return <ProductRequests />;
       case 'expenses':  return <ExpenseManagement />;

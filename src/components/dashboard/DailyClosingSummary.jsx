@@ -10,6 +10,10 @@ import {
   Target as TargetIcon,
   FileDown,
   CheckCircle,
+  Users,
+  Receipt,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useAppContext } from '../../contexts/AppContext';
 import Modal from '../common/Modal';
@@ -50,6 +54,8 @@ const DailyClosingSummary = ({ isOpen, onClose }) => {
   const { invoices, expenses, products, payments, settings } = useAppContext();
   const [generating, setGenerating] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const [showPaymentDetails, setShowPaymentDetails] = useState(false);
+  const [showExpenseDetails, setShowExpenseDetails] = useState(false);
 
   const data = useMemo(() => {
     const todayInvoices = invoices.filter((inv) => isToday(inv.createdAt));
@@ -87,6 +93,21 @@ const DailyClosingSummary = ({ isOpen, onClose }) => {
     const target = isToday(settings.dailyTargetSetDate) ? Number(settings.dailyTarget) || 0 : 0;
     const targetPercent = target > 0 ? Math.min(999, (revenue / target) * 100) : null;
 
+    // Payment breakdown by customer
+    const paymentMap = {};
+    todayPayments.forEach((p) => {
+      const name = p.customerName || 'Unknown';
+      paymentMap[name] = (paymentMap[name] || 0) + (p.amount || 0);
+    });
+    const paymentDetails = Object.entries(paymentMap).map(([name, amount]) => ({ name, amount }));
+
+    // Expense breakdown
+    const expenseDetails = todayExpenseList.map((e) => ({
+      title: e.title,
+      category: e.category,
+      amount: e.amount,
+    }));
+
     return {
       billsCount: todayInvoices.length,
       revenue,
@@ -98,6 +119,8 @@ const DailyClosingSummary = ({ isOpen, onClose }) => {
       topProduct,
       target,
       targetPercent,
+      paymentDetails,
+      expenseDetails,
     };
   }, [invoices, expenses, products, payments, settings]);
 
@@ -272,6 +295,67 @@ const DailyClosingSummary = ({ isOpen, onClose }) => {
           />
         )}
       </div>
+
+      {/* Payments received — customer breakdown */}
+      {data.paymentDetails.length > 0 && (
+        <div className="mt-4 rounded-xl border border-slate-200 overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between px-4 py-3 bg-info-50 hover:bg-info-100 transition-colors"
+            onClick={() => setShowPaymentDetails((v) => !v)}
+          >
+            <div className="flex items-center gap-2 text-info-700 font-medium text-sm">
+              <Users size={15} />
+              Payments received — {data.paymentDetails.length} {data.paymentDetails.length === 1 ? 'customer' : 'customers'}
+            </div>
+            <div className="flex items-center gap-2 text-info-700">
+              <span className="text-sm font-semibold num-display">{formatINR(data.received)}</span>
+              {showPaymentDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
+          </button>
+          {showPaymentDetails && (
+            <ul className="divide-y divide-slate-100">
+              {data.paymentDetails.map((p, i) => (
+                <li key={i} className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-sm text-slate-700">{p.name}</span>
+                  <span className="text-sm font-semibold text-success-700 num-display">{formatINR(p.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Expense breakdown */}
+      {data.expenseDetails.length > 0 && (
+        <div className="mt-3 rounded-xl border border-slate-200 overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between px-4 py-3 bg-warning-50 hover:bg-warning-100 transition-colors"
+            onClick={() => setShowExpenseDetails((v) => !v)}
+          >
+            <div className="flex items-center gap-2 text-warning-700 font-medium text-sm">
+              <Receipt size={15} />
+              Expense breakdown — {data.expenseDetails.length} {data.expenseDetails.length === 1 ? 'item' : 'items'}
+            </div>
+            <div className="flex items-center gap-2 text-warning-700">
+              <span className="text-sm font-semibold num-display">{formatINR(data.expenseTotal)}</span>
+              {showExpenseDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
+          </button>
+          {showExpenseDetails && (
+            <ul className="divide-y divide-slate-100">
+              {data.expenseDetails.map((e, i) => (
+                <li key={i} className="flex items-center justify-between px-4 py-2.5">
+                  <div>
+                    <p className="text-sm text-slate-700">{e.title}</p>
+                    {e.category && <p className="text-[11px] text-slate-400">{e.category}</p>}
+                  </div>
+                  <span className="text-sm font-semibold text-danger-700 num-display">{formatINR(e.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {data.billsCount === 0 && (
         <p className="text-center text-sm text-slate-500 mt-4">

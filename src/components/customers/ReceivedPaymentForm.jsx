@@ -41,6 +41,20 @@ const ReceivedPaymentForm = () => {
       error('Enter a valid amount');
       return;
     }
+
+    // Auto-create customer if manually typed and not already in the list
+    if (!form.customerId && form.customerName.trim()) {
+      const exists = customers.some(
+        c => c.name.toLowerCase() === form.customerName.trim().toLowerCase()
+      );
+      if (!exists) {
+        dispatch({
+          type: 'ADD_CUSTOMER',
+          payload: { name: form.customerName.trim(), phone: '', address: '' },
+        });
+      }
+    }
+
     dispatch({
       type: 'ADD_PAYMENT',
       payload: {

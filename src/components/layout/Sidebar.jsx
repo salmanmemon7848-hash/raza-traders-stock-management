@@ -8,6 +8,7 @@ import {
   BarChart3,
   Settings as SettingsIcon,
   ClipboardList,
+  ShoppingCart,
   X,
 } from 'lucide-react';
 import Logo from '../common/Logo';
@@ -23,6 +24,7 @@ const NAV_SECTIONS = [
   {
     label: 'Sales & Customers',
     items: [
+      { id: 'sales', label: 'Sales', icon: ShoppingCart },
       { id: 'customers', label: 'Customers', icon: Users },
       { id: 'requests', label: 'Product Requests', icon: ClipboardList },
     ],

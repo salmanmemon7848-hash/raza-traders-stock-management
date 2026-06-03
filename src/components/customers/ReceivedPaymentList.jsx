@@ -13,7 +13,7 @@ import ReceivedPaymentForm from './ReceivedPaymentForm';
 
 const ReceivedPaymentList = () => {
   const { payments, dispatch, success } = useAppContext();
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('today');
   const [deleting, setDeleting] = useState(null);
 
   const filtered = useMemo(() => {

@@ -59,7 +59,9 @@ export const generateInvoiceNumber = (invoices) => {
 export const calculateInvoiceGrossProfit = (invoice, products) => {
   const itemsProfit = (invoice.items || []).reduce((sum, item) => {
     const product = products.find(p => p.id === item.productId);
-    const purchasePrice = product?.purchasePrice ?? 0;
+    const purchasePrice = product?.purchasePrice;
+    // No purchase price set → 0 profit contribution for this item
+    if (!purchasePrice) return sum;
     return sum + ((item.price || 0) - purchasePrice) * (item.quantity || 0);
   }, 0);
   return itemsProfit - (invoice.discount || 0);
